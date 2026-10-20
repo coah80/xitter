@@ -13,9 +13,9 @@ import { BADGES_SCRIPT } from "./badges";
 import { DECOR_SCRIPT } from "./decor";
 import { DECORATIONS_SCRIPT } from "./decorations";
 import { THEME_SCRIPT } from "./themes/client";
-import { bootAccentCss, bootCss, fontLinks, pageChromeCss, type BackgroundPaint } from "./themes/css";
+import { bootAccentCss, bootCss, fontLinks, pageChromeCss, steamMotion, type BackgroundPaint } from "./themes/css";
 import { DEFAULT_ACCENT, swatches, themeColorOf, type Accent } from "./themes/presets";
-import { clientLook, type Look } from "./themes/validate";
+import { clientLook, themeForClient, type Look } from "./themes/validate";
 import { NOTICE_SCRIPT } from "./automod-notice";
 import { FLAG_PICKER_CSS, FLAG_PICKER_SCRIPT, flagPickerData } from "./flag-picker";
 import { PUBLIC_ORIGIN } from "./config";
@@ -264,6 +264,7 @@ let runtimePatched: { sha: string; text: string } | undefined;
 // asks for them.
 export function shell(user: User | null, multi = false, inCommunity = false, educationFlags: Record<string, number> = {}, links: MenuLink[] = [], look: Look | null = null, accent: Accent = DEFAULT_ACCENT, paint?: BackgroundPaint): string | undefined {
 	const theme = look?.kind === "painted" ? look.theme : null;
+	const clientTheme = theme ? themeForClient(theme) : null;
 	const loaded = loadBuild();
 	if (!loaded) return undefined;
 	const { build, runtime } = loaded;
@@ -287,7 +288,7 @@ ${FLAG_PICKER_CSS}
 ${STICKER_PICKER_CSS}${bootAccentCss(accent)}${theme ? bootCss(theme, paint) : ""}</style>
 </head><body><div id="react-root" style="height:100%;display:flex;"></div>
 <script>window.__INITIAL_STATE__=${inline(initialState(user, build.featureSwitch, inCommunity, educationFlags, accent))};window.__META_DATA__=${inline(meta)};</script>
-<script>window.__XITTER__=${inline({ ...flagPickerData(user?.flag ?? null), tidy: tidyData(links), theme, look: clientLook(look, accent), accent: clientLook(look, accent).accent, themeColor: themeColorOf(accent), themePresets: swatches(), pageChrome: pageChromeCss(paint) })};
+<script>window.__XITTER__=${inline({ ...flagPickerData(user?.flag ?? null), tidy: tidyData(links), theme: clientTheme, look: clientLook(look, accent), accent: clientLook(look, accent).accent, themeColor: themeColorOf(accent), themePresets: swatches(), pageChrome: pageChromeCss(paint), steamMotion: steamMotion(paint) })};
 ${user ? ERROR_SCRIPT : ""}
 ${TIDY_SCRIPT}
 ${FRESH_SCRIPT}
