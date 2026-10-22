@@ -265,7 +265,7 @@ export const toolActions: Record<string, Action> = {
 				}
 				if (wanted.size > 50) throw new AdminError("That's over 50 accounts with alts included. Strike fewer at a time.");
 			}
-			const results: { id: string; screen_name: string; ok: boolean; why?: string; strikes?: number; outcome?: string }[] = [];
+			const results: { id: string; screen_name: string; ok: boolean; why?: string; strikes?: number; outcome?: string; hours?: number }[] = [];
 			for (const [id, name] of wanted) {
 				if (id === a.id) { results.push({ id, screen_name: name || a.screen_name, ok: false, why: "your own account" }); continue; }
 				try {
@@ -273,7 +273,7 @@ export const toolActions: Record<string, Action> = {
 					const message = newId();
 					await sql`insert into staff_messages (id, user_id, actor_id, kind, body) values (${message}::bigint, ${id}::bigint, ${a.id}::bigint, 'strike', ${body})`;
 					const escalation = b.escalate !== false ? await escalate(id, a.id, `bulk strike from @${a.screen_name}`) : undefined;
-					results.push({ id, screen_name: u.screen_name, ok: true, strikes: escalation?.strikes, outcome: escalation?.outcome });
+					results.push({ id, screen_name: u.screen_name, ok: true, strikes: escalation?.strikes, outcome: escalation?.outcome, hours: escalation?.hours });
 				} catch (e) {
 					if (e instanceof AdminError) results.push({ id, screen_name: name, ok: false, why: e.message });
 					else throw e;
