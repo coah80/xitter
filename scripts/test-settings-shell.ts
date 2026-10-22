@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { renderSettingsShell, settingsChrome, settingsHome, SHELL_CSS } from "../src/settings-shell";
-import { tidyData } from "../src/tidy";
+import { tidyData, TIDY_SCRIPT } from "../src/tidy";
 import { xitterSections, type MenuFacts } from "../src/xitter-menu";
 
 function facts(over: Partial<MenuFacts> = {}): MenuFacts {
@@ -111,4 +111,7 @@ test("a member payload has the Xitter row and no staff key", () => {
 	expect(JSON.stringify(data)).not.toContain("/admin");
 	const staff = tidyData([], { nav: { href: "/admin", text: "Admin" }, tools: [] });
 	expect(staff.staff?.nav).toEqual({ href: "/admin", text: "Admin" });
+	expect(TIDY_SCRIPT).toContain('location.pathname==="/admin"');
+	expect(TIDY_SCRIPT).toContain('var weight=active?"700":"400"');
+	expect(TIDY_SCRIPT).toContain('a[href="/explore"]');
 });

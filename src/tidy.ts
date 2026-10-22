@@ -289,20 +289,34 @@ export const TIDY_SCRIPT = `(function(){
 		if(!spec)return;
 		var nav=document.querySelector('header[role="banner"] nav');
 		var home=nav&&nav.querySelector('a[href="/home"]');
-		if(!home||nav.querySelector('a[href="/admin"]'))return;
-		var item=home.parentElement&&home.parentElement!==nav?home.parentElement:home;
+		var sample=nav&&(nav.querySelector('a[href="/explore"]')||nav.querySelector('a[href="/notifications"]')||home);
+		if(!sample||nav.querySelector('a[href="/admin"]'))return;
+		var item=sample.parentElement&&sample.parentElement!==nav?sample.parentElement:sample;
 		var box=item.cloneNode(true);
 		var link=box.querySelector("a")||box;
 		leave(link,spec.href);
 		link.removeAttribute("data-testid");
-		[].forEach.call(link.querySelectorAll("span"),function(n){if(!n.childElementCount&&n.textContent.trim()==="Home")n.textContent=spec.text});
-		if((link.getAttribute("aria-label")||"")==="Home")link.setAttribute("aria-label",spec.text);
+		link.removeAttribute("aria-current");
+		var active=location.pathname==="/admin"||location.pathname.indexOf("/admin/")===0;
+		var weight=active?"700":"400";
+		link.style.fontWeight=weight;
+		link.setAttribute("aria-label",spec.text);
+		var named=false;
+		[].forEach.call(link.querySelectorAll("span"),function(n){
+			n.style.fontWeight=weight;
+			if(named||n.childElementCount||!n.textContent.trim())return;
+			n.textContent=spec.text;
+			named=true;
+		});
 		var svg=link.querySelector("svg");
 		var path=svg&&svg.querySelector("path");
 		if(path){svg.setAttribute("viewBox","0 0 24 24");path.setAttribute("d","M12 1.5 3.5 5v6c0 5.2 3.6 10 8.5 11.5 4.9-1.5 8.5-6.3 8.5-11.5V5L12 1.5zm0 2.2 6.5 2.7V11c0 4.2-2.8 8.2-6.5 9.4-3.7-1.2-6.5-5.2-6.5-9.4V6.4L12 3.7z")}
 		var more=nav.querySelector('[data-testid="AppTabBar_More_Menu"]');
 		var before=more&&more.parentElement&&more.parentElement!==nav?more.parentElement:more;
-		if(before&&before.parentElement===item.parentElement)item.parentElement.insertBefore(box,before);
+		var homeItem=home&&home.parentElement&&home.parentElement!==nav?home.parentElement:home;
+		var parent=homeItem&&homeItem.parentElement;
+		if(before&&parent&&before.parentElement===parent)parent.insertBefore(box,before);
+		else if(parent)parent.appendChild(box);
 		else item.parentElement.appendChild(box);
 	}
 	function twoFactorRow(){

@@ -1,4 +1,4 @@
-import { allows, mayRun, type Role } from "./staff-permissions";
+import { allows, type Role } from "./staff-permissions";
 
 export type MenuLink = {
 	href: string;
@@ -43,45 +43,6 @@ const CAT = "M5 3.5 9.2 7.6A9 9 0 0 1 12 7.2a9 9 0 0 1 2.8.4L19 3.5V12a7 7 0 0 1
 const KEY = "M280-400q-33 0-56.5-23.5T200-480q0-33 23.5-56.5T280-560q33 0 56.5 23.5T360-480q0 33-23.5 56.5T280-400Zm0 160q-100 0-170-70T40-480q0-100 70-170t170-70q67 0 121.5 33t86.5 87h352l120 120-180 180-80-60-80 60-85-60h-47q-32 54-86.5 87T280-240Zm0-80q56 0 98.5-34t56.5-86h125l58 41 82-61 71 55 75-75-40-40H435q-14-52-56.5-86T280-640q-66 0-113 47t-47 113q0 66 47 113t113 47Z";
 const GLOBE = "M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm-40-82v-78q-33 0-56.5-23.5T360-320v-40L168-552q-3 18-5.5 36t-2.5 36q0 121 79.5 212T440-162Zm276-102q41-45 62.5-100.5T800-480q0-98-54.5-179T600-776v16q0 33-23.5 56.5T520-680h-80v80q0 17-11.5 28.5T400-560h-80v80h240q17 0 28.5 11.5T600-440v120h40q26 0 47 15.5t29 40.5Z";
 const LOCK = "M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5zm-3 8V6a3 3 0 0 1 6 0v3H9z";
-
-type Need = "any" | "rank-admin" | "appeals" | "errors" | "platforms";
-
-const ADMIN_SECTIONS: { hash: string; title: string; need: Need }[] = [
-	{ hash: "reports", title: "Reports", need: "any" },
-	{ hash: "appeals", title: "Appeals", need: "appeals" },
-	{ hash: "users", title: "Users", need: "any" },
-	{ hash: "orgs", title: "Organisations", need: "any" },
-	{ hash: "posts", title: "Posts", need: "any" },
-	{ hash: "automod", title: "Automod", need: "any" },
-	{ hash: "articles", title: "Articles", need: "any" },
-	{ hash: "media", title: "Media", need: "any" },
-	{ hash: "invites", title: "Invites", need: "any" },
-	{ hash: "badges", title: "Badges", need: "any" },
-	{ hash: "stickers", title: "Stickers", need: "any" },
-	{ hash: "hashflags", title: "Branded hashtags", need: "any" },
-	{ hash: "switches", title: "Feature switches", need: "rank-admin" },
-	{ hash: "topics", title: "Topics", need: "any" },
-	{ hash: "cards", title: "Explore cards", need: "any" },
-	{ hash: "email", title: "Email", need: "any" },
-	{ hash: "apps", title: "Client apps", need: "platforms" },
-	{ hash: "oauth", title: "OAuth apps", need: "any" },
-	{ hash: "federation", title: "Federation", need: "any" },
-	{ hash: "settings", title: "Settings", need: "any" },
-	{ hash: "errors", title: "Errors", need: "errors" },
-	{ hash: "permissions", title: "Staff permissions", need: "rank-admin" },
-	{ hash: "security", title: "Security", need: "rank-admin" },
-	{ hash: "backups", title: "Backups", need: "rank-admin" },
-	{ hash: "client", title: "Client", need: "rank-admin" },
-	{ hash: "audit", title: "Audit log", need: "any" },
-];
-
-function sectionOpen(need: Need, role: Role): boolean {
-	if (need === "any") return true;
-	if (need === "rank-admin") return role === "admin";
-	if (need === "appeals") return allows(role, "appeals");
-	if (need === "errors") return mayRun(role, "errors", "admin");
-	return mayRun(role, "platforms", "admin");
-}
 
 type Draft = XitterRow & { where: MenuLink["where"]; see: (f: MenuFacts) => boolean };
 
@@ -153,13 +114,14 @@ export function staffTools(facts: MenuFacts): StaffTool[] {
 	if (!facts.role) return [];
 	if (facts.staffGate) return [{ kind: "note", text: facts.staffGate }];
 	const role = facts.role;
-	const tools: StaffTool[] = [{ kind: "link", href: "/admin", text: "Admin panel", description: "Reports, accounts, and instance tools." }];
-	for (const section of ADMIN_SECTIONS) {
-		if (!sectionOpen(section.need, role)) continue;
-		tools.push({ kind: "link", href: `/admin#${section.hash}`, text: section.title, description: "Open this part of the admin panel." });
-	}
+	const tools: StaffTool[] = [
+		{ kind: "link", href: "/admin", text: "Admin panel", description: "Reports, accounts, and instance tools." },
+		{ kind: "link", href: "/admin#reports", text: "Reports", description: "Review posts and accounts that people reported." },
+	];
+	if (allows(role, "appeals")) tools.push({ kind: "link", href: "/admin#appeals", text: "Appeals", description: "Read and answer account appeals." });
 	if (allows(role, "note_appeals")) tools.push({ kind: "link", href: "/account/notes/appeals", text: "Review note appeals", description: "Open Community Notes appeals waiting for staff." });
-	if (facts.role === "admin" && facts.localSuperadmin) tools.push({ kind: "link", href: "/federation/superadmin", text: "Superadmin", description: "Open another instance's admin panel, or defederate everywhere." });
+	tools.push({ kind: "link", href: "/admin#users", text: "Users", description: "Find an account, change its role, or review its history." });
+	if (role === "admin" && facts.localSuperadmin) tools.push({ kind: "link", href: "/federation/superadmin", text: "Superadmin", description: "Open another instance's admin panel, or defederate everywhere." });
 	return tools;
 }
 

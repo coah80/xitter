@@ -62,33 +62,14 @@ test("a member sees the pages menuLinks already allowed, and no staff data", () 
 });
 
 test("staff tools follow what each role can open", () => {
-	const support = staffHrefs("support");
-	expect(support).toContain("/admin");
-	expect(support).toContain("/admin#reports");
-	expect(support).toContain("/admin#users");
-	expect(support).not.toContain("/admin#appeals");
-	expect(support).not.toContain("/admin#apps");
-	expect(support).not.toContain("/admin#errors");
-	expect(support).not.toContain("/admin#switches");
-	expect(support.some((h) => h === "/account/notes/appeals")).toBe(false);
-
-	const moderator = staffHrefs("moderator");
-	expect(moderator).toContain("/admin#appeals");
-	expect(moderator).toContain("/account/notes/appeals");
-	expect(moderator).not.toContain("/admin#apps");
-	expect(moderator).not.toContain("/admin#errors");
-	expect(moderator).not.toContain("/federation/superadmin");
-
-	const admin = staffHrefs("admin");
-	expect(admin).toContain("/admin#apps");
-	expect(admin).toContain("/admin#errors");
-	expect(admin).toContain("/admin#switches");
-	expect(admin).toContain("/admin#permissions");
-	expect(admin).not.toContain("/federation/superadmin");
-
-	const home = staffHrefs("admin", { localSuperadmin: true });
-	expect(home).toContain("/federation/superadmin");
+	expect(staffHrefs("support")).toEqual(["/admin", "/admin#reports", "/admin#users"]);
+	expect(staffHrefs("moderator")).toEqual(["/admin", "/admin#reports", "/admin#appeals", "/account/notes/appeals", "/admin#users"]);
+	expect(staffHrefs("admin")).toEqual(["/admin", "/admin#reports", "/admin#appeals", "/account/notes/appeals", "/admin#users"]);
+	expect(staffHrefs("admin", { localSuperadmin: true })).toEqual(["/admin", "/admin#reports", "/admin#appeals", "/account/notes/appeals", "/admin#users", "/federation/superadmin"]);
 	expect(staffHrefs("moderator", { localSuperadmin: true })).not.toContain("/federation/superadmin");
+	const support = staffTools(facts({ role: "support" })).flatMap((t) => (t.kind === "link" ? [t.description] : []));
+	expect(support.some((d) => d.includes("Open this part"))).toBe(false);
+	expect(support[1]).toBe("Review posts and accounts that people reported.");
 
 	const gated = staffTools(facts({ role: "admin", localSuperadmin: true, staffGate: "Staff need two-factor authentication." }));
 	expect(gated).toEqual([{ kind: "note", text: "Staff need two-factor authentication." }]);
