@@ -6,6 +6,7 @@ import { knownOperation, runOperation } from "./graphql";
 import { brandingFile } from "./branding";
 import { handleLogin, maintenancePage, rulesPage } from "./login";
 import { adminApi, audit } from "./admin";
+import { RAIL_CSS, railNav } from "./settings-shell";
 import { loadSettings, settings } from "./settings";
 import { flagPickerData } from "./flag-picker";
 import { flagSvg } from "./flags";
@@ -129,9 +130,14 @@ const etags = new WeakMap<Buffer, string>();
 // The panel names the instance in its markup and in its scripts' single-quoted
 // strings; as entities the name is safe in both.
 const ADMIN_ENTITIES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;", "\\": "&#92;" };
-const adminPage = async () => {
+const adminPage = async (viewer: { screen_name: string }) => {
 	const name = settings().instance_name.replace(/[&<>"'\\]/g, (c) => ADMIN_ENTITIES[c]);
-	return (await Bun.file(new URL("./admin.html", import.meta.url)).text()).replaceAll("{{instance}}", () => name);
+	// the same app rail as the Xitter settings pages, so the panel has a way back out
+	const rail = railNav({ screenName: viewer.screen_name, admin: true, name: settings().instance_name, current: "admin" });
+	return (await Bun.file(new URL("./admin.html", import.meta.url)).text())
+		.replaceAll("{{instance}}", () => name)
+		.replace("{{railcss}}", () => RAIL_CSS)
+		.replace("{{rail}}", () => rail);
 };
 
 function staffBlockedPage(reason: string) {
@@ -492,7 +498,7 @@ async function route(req: Request): Promise<Response | undefined> {
 	if ((p === "/admin" || p === "/admin/") && viewer?.role) {
 		const blocked = await staffGate(req, viewer);
 		if (blocked) return staffBlockedPage(blocked);
-		return new Response(await adminPage(), { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+		return new Response(await adminPage(viewer), { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
 	}
 	if (p === "/_debug/unknown" && viewer?.role === "admin") return Response.json(Object.fromEntries([...unknown].sort((a, b) => b[1] - a[1])));
 	if (API_PREFIX.test(p) || req.method !== "GET") {

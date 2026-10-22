@@ -155,7 +155,11 @@ export const FRESH_SCRIPT = `(function(){
 	};
 	var push=history.pushState;
 	history.pushState=function(s,t,u){
-		if(u&&ownedPath(u)){location.assign(String(u));return;}
+		if(u&&ownedPath(u)){
+			// the admin panel's back arrow returns here
+			try{if(new URL(String(u),location.origin).pathname.indexOf("/admin")===0)sessionStorage.setItem("xitter-admin-from",location.pathname+location.search)}catch(e){}
+			location.assign(String(u));return;
+		}
 		if(stale&&u&&!/\\/(compose|i\\/flow|i\\/bookmarks\\/add)/.test(String(u))){
 			stale=false;
 			location.assign(u);

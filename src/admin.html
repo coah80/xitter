@@ -7,7 +7,7 @@
 <link rel="icon" type="image/png" href="/public/favicon.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..24,400,0,0">
 <style>
-	:root { --bg: #000; --panel: #16181c; --line: #2f3336; --text: #e7e9ea; --dim: #71767b; --blue: #1d9bf0; --red: #f4212e; --green: #00ba7c; --gold: #e2b719; }
+	:root { --bg: #000; --panel: #16181c; --line: #2f3336; --text: #e7e9ea; --dim: #71767b; --blue: #1d9bf0; --red: #f4212e; --green: #00ba7c; --gold: #e2b719; --hover: rgb(231 233 234 / .1); --accent: #1d9bf0; --accent-hover: #1a8cd8; --logo: url(/public/logo-dark.png); --icon: url(/public/icon-dark.png); }
 	* { box-sizing: border-box; }
 	body { margin: 0; background: var(--bg); color: var(--text); font: 15px system-ui, -apple-system, "Segoe UI", sans-serif; }
 	a { color: var(--blue); text-decoration: none; }
@@ -15,7 +15,16 @@
 	.app { display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
 	nav { width: 390px; flex: none; border-right: 1px solid var(--line); padding: 0 0 24px; position: sticky; top: 0; height: 100vh; height: 100dvh; overflow-y: auto; overscroll-behavior: contain; background: var(--bg); }
 	.navhead { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 12px; min-height: 53px; padding: 0 16px; background: rgb(0 0 0 / .85); backdrop-filter: blur(12px); }
-	nav .logo { width: 28px; height: 28px; margin: 0; object-fit: contain; }
+	nav .logo { width: 28px; height: 28px; margin: 0; object-fit: contain; display: block; }
+	.navhead .home { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; flex: none; }
+	.navhead .home:hover, a.back:hover { background: var(--panel); }
+	a.back { color: var(--text); }
+	/* the app rail beside the panel (shared with the Xitter settings pages) */
+	.xrail, .xnav a { box-sizing: content-box; }
+	.xrail { border-right: 0; }
+	.xrail a { color: var(--text); }
+	.xrail .xpost { color: #fff; }
+{{railcss}}
 	.navtitle { font-size: 20px; line-height: 24px; font-weight: 700; }
 	.navsearch { margin: 4px 16px 12px; display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--dim); }
 	.navsearch:focus-within { border-color: var(--blue); color: var(--blue); }
@@ -26,7 +35,7 @@
 	nav button.on { font-weight: 700; background: rgb(231 233 234 / .08); }
 	nav button.on::after { content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 2px; background: var(--blue); }
 	nav .who { margin-top: 16px; padding: 0 16px; color: var(--dim); font-size: 13px; }
-	main { width: min(720px, calc(100vw - 390px)); flex: none; min-width: 0; border-right: 1px solid var(--line); padding: 0; max-width: none; background: var(--bg); }
+	main { flex: 0 1 720px; min-width: 0; border-right: 1px solid var(--line); padding: 0; max-width: none; background: var(--bg); }
 	.detailbar { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 8px; min-height: 53px; padding: 0 12px; background: rgb(0 0 0 / .65); backdrop-filter: blur(12px); }
 	.detailbar h1 { margin: 0; font-size: 20px; line-height: 24px; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.back { width: 34px; height: 34px; border: 0; border-radius: 50%; background: transparent; color: inherit; display: grid; place-items: center; cursor: pointer; flex: none; }
@@ -105,7 +114,6 @@
 	.list p:last-child { margin-bottom: 0; }
 	@media (max-width: 1100px) and (min-width: 701px) {
 		nav { width: 280px; }
-		main { width: min(720px, calc(100vw - 280px)); }
 	}
 	@media (max-width: 700px) {
 		.app { display: block; }
@@ -128,13 +136,26 @@
 </head>
 <body data-depth="0">
 <div class="app">
+	{{rail}}
 	<nav id="nav">
-		<img class="logo" src="/public/logo-dark.png" alt="{{instance}}">
+		<div class="navhead"><a class="back" id="navback" href="/account/xitter" aria-label="Back" title="Back"><span class="icon">arrow_back</span></a><a class="home" href="/home" aria-label="Home" title="Home"><img class="logo" src="/public/icon-dark.png" alt="{{instance}}"></a><div class="navtitle">Admin</div></div>
 	</nav>
 	<main id="main"></main>
 </div>
 <script>
 "use strict";
+// the list's back arrow: the page that opened the panel, else Settings > Xitter
+(function () {
+	let from = null;
+	try {
+		const r = document.referrer ? new URL(document.referrer) : null;
+		if (r && r.origin === location.origin && !r.pathname.startsWith("/admin") && r.pathname !== "/login") from = r.pathname + r.search;
+		// Xitter's own pages send no referrer: the link that opened the panel left its page here
+		if (from) sessionStorage.setItem("xitter-admin-from", from);
+		else from = sessionStorage.getItem("xitter-admin-from");
+	} catch (e) {}
+	document.getElementById("navback").href = from && from.charAt(0) === "/" && from.charAt(1) !== "/" ? from : "/account/xitter";
+})();
 const csrf = (document.cookie.match(/(?:^|; )ct0=([^;]+)/) || [])[1] || "";
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const annRow = (b, dis) => '<div class="row ann-row"><input data-label maxlength="30" placeholder="Label, like More" aria-label="Button label" value="' + esc(b.label) + '"' + dis + '><input data-url type="url" inputmode="url" placeholder="https://" aria-label="Button link" value="' + esc(b.url) + '"' + dis + '>' + (dis ? "" : '<button class="btn" type="button" data-remove>Remove</button>') + "</div>";
@@ -1496,8 +1517,6 @@ async function renderUser(main, id) {
 		$("#main").innerHTML = '<div class="empty">' + esc(e.message) + ' <a href="/home">Back to {{instance}}</a></div>';
 		return;
 	}
-	const logo = $("#nav .logo");
-	logo.remove();
 	const GROUPS = [
 		["", ["overview"]],
 		["Moderation", ["reports", "appeals", "posts", "automod", "articles", "media"]],
@@ -1516,7 +1535,7 @@ async function renderUser(main, id) {
 		if (!buttons) return "";
 		return '<section data-group>' + (title ? '<div class="navgroup">' + esc(title) + "</div>" : "") + buttons + "</section>";
 	}).join("");
-	$("#nav").insertAdjacentHTML("beforeend", '<div class="navhead">' + logo.outerHTML + '<div class="navtitle">Admin</div></div><label class="navsearch"><span class="icon">search</span><input id="navq" type="search" placeholder="Search admin" aria-label="Search admin"></label>' + groups +
+	$("#nav").insertAdjacentHTML("beforeend", '<label class="navsearch"><span class="icon">search</span><input id="navq" type="search" placeholder="Search admin" aria-label="Search admin"></label>' + groups +
 		(me.superadmin_home ? '<button data-find="superadmin" onclick="location.href=\'/federation/superadmin\'"><span class="icon">shield_person</span><span>Superadmin</span></button>' : "") +
 		'<button data-find="home" onclick="location.href=\'/home\'"><span class="icon">arrow_back</span><span>Back to {{instance}}</span></button>' +
 		'<div class="who">@' + esc(me.screen_name) + " · " + esc(me.superadmin ? "superadmin" : me.role) + "</div>");

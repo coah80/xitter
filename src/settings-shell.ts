@@ -2,7 +2,7 @@ import type { XitterSection } from "./xitter-menu";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
-const ROOTS = ["/account/xitter", "/account/apps", "/account/2fa", "/account/passkeys", "/account/notices", "/account/invites", "/account/api", "/account/notes", "/account/automation", "/account/instances", "/account/import", "/account/decoration", "/account/organisation", "/account/decor", "/account/theme", "/account/migrate"];
+const ROOTS = ["/federation/superadmin", "/account/xitter", "/account/apps", "/account/2fa", "/account/passkeys", "/account/notices", "/account/invites", "/account/api", "/account/notes", "/account/automation", "/account/instances", "/account/import", "/account/decoration", "/account/organisation", "/account/decor", "/account/theme", "/account/migrate"];
 
 export function settingsChrome(pathname: string): boolean {
 	return ROOTS.some((root) => pathname === root || pathname.startsWith(`${root}/`));
@@ -64,20 +64,24 @@ const MORE = "M3.75 12a8.25 8.25 0 1 1 16.5 0 8.25 8.25 0 0 1-16.5 0zM12 1.75C6.
 const SHIELD = "M12 1.5 3.5 5v6c0 5.2 3.6 10 8.5 11.5 4.9-1.5 8.5-6.3 8.5-11.5V5L12 1.5zm0 2.2 6.5 2.7V11c0 4.2-2.8 8.2-6.5 9.4-3.7-1.2-6.5-5.2-6.5-9.4V6.4L12 3.7z";
 const PLUS = "M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7V4z";
 
+// staff only (a member's page never names /admin): the panel's back arrow returns to the page that opened it
+const ADMIN_OPENER = `document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a[href]");var h=a&&a.getAttribute("href");if(h&&(h==="/admin"||h.indexOf("/admin#")===0||h.indexOf("/admin/")===0)){try{sessionStorage.setItem("xitter-admin-from",location.pathname+location.search)}catch(err){}}});\n`;
+
 export type ShellRail = { screenName: string; admin: boolean };
 
-function railLink(href: string, label: string, icon: string): string {
-	return `<a href="${esc(href)}" aria-label="${esc(label)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${icon}"/></svg><span class="xlabel">${esc(label)}</span></a>`;
+function railLink(href: string, label: string, icon: string, on = false): string {
+	return `<a href="${esc(href)}" aria-label="${esc(label)}"${on ? ' aria-current="page"' : ""}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${icon}"/></svg><span class="xlabel">${esc(label)}</span></a>`;
 }
 
-function railNav(opts: { screenName: string; admin: boolean; name: string }): string {
+// X's left nav, shared by the Xitter settings pages and the admin panel
+export function railNav(opts: { screenName: string; admin: boolean; name: string; current?: "admin" }): string {
 	const items = [
 		railLink("/home", "Home", HOME),
 		railLink("/explore", "Explore", EXPLORE),
 		railLink("/notifications", "Notifications", BELL),
 		railLink("/i/chat", "Chat", CHAT),
 		railLink(`/${encodeURIComponent(opts.screenName)}`, "Profile", PERSON),
-		...(opts.admin ? [railLink("/admin", "Admin", SHIELD)] : []),
+		...(opts.admin ? [railLink("/admin", "Admin", SHIELD, opts.current === "admin")] : []),
 		railLink("/settings", "More", MORE),
 	].join("");
 	return `<nav class="xrail" aria-label="Primary"><a class="xmark" href="/home" aria-label="${esc(opts.name)}"></a><div class="xnav">${items}</div><a class="xpost" href="/compose/post"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${PLUS}"/></svg><span class="xlabel">Post</span></a></nav>`;
@@ -104,7 +108,7 @@ export function renderSettingsShell(opts: { path: string; title: string; body: s
 ${page}
 </div>
 <script>(function(){
-document.querySelectorAll("[data-xfilter]").forEach(function(input){
+${opts.rail.admin ? ADMIN_OPENER : ""}document.querySelectorAll("[data-xfilter]").forEach(function(input){
 var pane=input.closest("[data-pane]");
 input.addEventListener("input",function(){
 var q=input.value.trim().toLowerCase();
@@ -115,15 +119,31 @@ pane.querySelectorAll("[data-group]").forEach(function(g){var any=false;g.queryS
 })();</script></div>`;
 }
 
-export const SHELL_CSS = `
+// the rail alone, for pages that bring their own columns (the admin panel)
+export const RAIL_CSS = `
 .xapp{display:flex;justify-content:center;align-items:flex-start;min-height:100vh}
 .xrail{position:sticky;top:0;height:100vh;width:275px;flex:none;display:flex;flex-direction:column;align-items:flex-start;padding:0 12px 16px;overflow-y:auto}
 .xmark{display:block;width:150px;height:56px;margin-top:2px;border-radius:9999px;background:var(--logo) 12px center/128px auto no-repeat}
 .xnav{display:flex;flex-direction:column;width:100%;align-items:stretch}
 .xnav a{display:flex;align-items:center;gap:20px;min-height:50px;padding:12px;border-radius:9999px;color:var(--text);font-size:20px;line-height:24px;font-weight:400;text-decoration:none}
+.xnav a[aria-current]{font-weight:700}
 .xnav a svg{width:26.25px;height:26.25px;fill:currentColor;flex:none}
 .xpost{display:flex;align-items:center;justify-content:center;width:calc(100% - 24px);max-width:226px;height:52px;margin:16px 12px 0;border-radius:9999px;background:var(--accent-fill,var(--accent));color:#fff;font-size:17px;line-height:20px;font-weight:700;text-decoration:none}
 .xpost svg{display:none;width:24px;height:24px;fill:currentColor}
+@media (hover:hover){.xnav a:hover,.xmark:hover{background-color:var(--hover);text-decoration:none}.xpost:hover{background:var(--accent-hover);text-decoration:none}}
+@media (max-width:1280px) and (min-width:701px){
+.xrail{width:88px;padding:0 6px 16px;align-items:center}
+.xmark{width:50px;background-image:var(--icon);background-size:30px;background-position:center}
+.xnav{align-items:center;width:auto}
+.xnav a{width:50px;height:50px;min-height:50px;padding:0;justify-content:center;gap:0}
+.xlabel{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.xpost{width:50px;height:50px;margin:16px 0 0;padding:0}
+.xpost svg{display:block}
+}
+@media (max-width:700px){.xrail{display:none}}
+`;
+
+export const SHELL_CSS = `${RAIL_CSS}
 .xshell{display:flex;align-items:flex-start;min-height:100vh}
 .slist,.xlist,.xpage{min-height:100vh;display:flex;flex-direction:column;background:var(--bg)}
 .slist{width:390px;flex:none;border-right:1px solid var(--border)}
@@ -147,20 +167,12 @@ export const SHELL_CSS = `
 .xgrp{padding:16px 16px 4px;font-size:20px;line-height:24px;font-weight:800}
 .xnote{margin:0;padding:12px 16px 0;color:var(--muted);font-size:15px;line-height:20px}
 @media (hover:hover){
-.xrow:hover,.xnav a:hover,.xmark:hover{background-color:var(--hover);text-decoration:none}
-.xpost:hover{background:var(--accent-hover);text-decoration:none}
+.xrow:hover{background-color:var(--hover);text-decoration:none}
 }
 @media (max-width:1280px) and (min-width:701px){
-.xrail{width:88px;padding:0 6px 16px;align-items:center}
-.xmark{width:50px;background-image:var(--icon);background-size:30px;background-position:center}
-.xnav{align-items:center;width:auto}
-.xnav a{width:50px;height:50px;min-height:50px;padding:0;justify-content:center;gap:0}
-.xlabel{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-.xpost{width:50px;height:50px;margin:16px 0 0;padding:0}
-.xpost svg{display:block}
 .slist{width:300px}
 .xlist,.xpage{width:min(600px,calc(100vw - 388px))}
 }
 @media (min-width:701px){.xshell[data-depth="1"] .xpage{display:none}.xshell[data-depth="2"] .xlist{display:none}.xlist>.bar .back,.slist>.bar .back{display:none}}
-@media (max-width:700px){.xrail{display:none}.xshell{display:block}.slist,.xlist,.xpage{width:100%;border-right:0}.xshell[data-depth="1"] .slist,.xshell[data-depth="1"] .xpage{display:none}.xshell[data-depth="2"] .slist,.xshell[data-depth="2"] .xlist{display:none}}
+@media (max-width:700px){.xshell{display:block}.slist,.xlist,.xpage{width:100%;border-right:0}.xshell[data-depth="1"] .slist,.xshell[data-depth="1"] .xpage{display:none}.xshell[data-depth="2"] .slist,.xshell[data-depth="2"] .xlist{display:none}}
 `;

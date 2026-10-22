@@ -25,3 +25,20 @@ test("the admin panel is a searchable grouped list with a detail column", () => 
 	expect(html).toContain(".table, .table tbody { display: block;");
 	expect(html).toContain("overflow-wrap: anywhere");
 });
+
+test("the admin panel has a way back out", async () => {
+	const { railNav, RAIL_CSS, settingsChrome } = await import("../src/settings-shell");
+	const html = readFileSync(new URL("../src/admin.html", import.meta.url), "utf8");
+	expect(html).toContain("{{rail}}");
+	expect(html).toContain("{{railcss}}");
+	expect(html).toContain('id="navback" href="/account/xitter"');
+	expect(html).toContain('<a class="home" href="/home"');
+	expect(html).toContain('sessionStorage.getItem("xitter-admin-from")');
+	const rail = railNav({ screenName: "coah", admin: true, name: "Xitter", current: "admin" });
+	for (const href of ["/home", "/explore", "/notifications", "/i/chat", "/coah", "/settings", "/compose/post"]) expect(rail).toContain(`href="${href}"`);
+	expect(rail).toContain('href="/admin" aria-label="Admin" aria-current="page"');
+	expect(RAIL_CSS).toContain(".xrail{display:none}");
+	// Superadmin opens in the settings shell, with its rail and back arrow
+	expect(settingsChrome("/federation/superadmin")).toBe(true);
+	expect(settingsChrome("/federation/superadminx")).toBe(false);
+});
