@@ -466,6 +466,10 @@ export const THEME_SCRIPT = String.raw`(function(){
 		add("iconFill","fill:var(--xt-icon)!important",false);
 		add("iconActiveFill","fill:var(--xt-icon-active)!important",false);
 		add("border","border-color:var(--xt-border)!important;border-bottom-color:var(--xt-divider)!important",false);
+		// the composer's Post and Reply buttons wear the accent, with the accent's
+		// text colour (accent rules below); the theme's button fill outranks those
+		// on specificity and left light text on a light pill
+		found.button=(found.button||[]).map(function(sel){return sel+':not([data-testid="tweetButton"]):not([data-testid="tweetButtonInline"])'});
 		add("button","background:var(--xt-button)!important",false);
 		add("buttonText","color:var(--xt-button-text)!important",false);
 		add("accentColor","color:var(--xt-accent)!important;fill:var(--xt-accent)!important",false);
