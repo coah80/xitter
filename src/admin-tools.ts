@@ -229,6 +229,61 @@ export const toolActions: Record<string, Action> = {
 			return {};
 		},
 	},
+	// one strike for many accounts at once (an alt chain, a raid): every target
+	// gets its own strike message and escalation, exactly like sendStaffMessage,
+	// and accounts a target's rank protects are skipped with the reason, not fatal
+	bulkStrike: {
+		role: "moderator",
+		run: async (a, b) => {
+			const body = textOf(b.body);
+			const wanted = new Map<string, string>(); // id -> screen_name ("" until resolved)
+			const missing: string[] = [];
+			if (Array.isArray(b.ids)) for (const x of b.ids.slice(0, 50)) wanted.set(idOf(x), "");
+			if (Array.isArray(b.handles)) {
+				const names = [...new Set(b.handles.map((h: unknown) => String(h).trim().replace(/^@+/, "").toLowerCase()).filter(Boolean))];
+				if (names.length > 50) throw new AdminError("At most 50 handles at a time.");
+				if (names.length) {
+					const rows = await sql`select id::text, screen_name from users where lower(screen_name) = any(${sql.array(names, "TEXT")})`;
+					const byName = new Map(rows.map((r) => [r.screen_name.toLowerCase(), r]));
+					for (const n of names) {
+						const r = byName.get(n);
+						if (r) wanted.set(r.id, r.screen_name);
+						else missing.push(n);
+					}
+				}
+			}
+			if (!wanted.size) throw new AdminError(missing.length ? "None of those handles match an account." : "Pick at least one account.");
+			// alts of the targets, only for staff who may see addresses at all
+			let withAlts = false;
+			if (b.include_alts === true && allows(a.role, "ip_addresses")) {
+				for (const id of [...wanted.keys()]) {
+					const rows = await sql`select distinct u.id::text as id, u.screen_name from login_events mine
+						join login_events other on other.ip = mine.ip and other.user_id <> mine.user_id and other.created_at > now() - interval '90 days'
+						join users u on u.id = other.user_id
+						where mine.user_id = ${id}::bigint and mine.ip is not null and mine.created_at > now() - interval '90 days' limit 20`;
+					for (const r of rows) if (!wanted.has(r.id)) { wanted.set(r.id, r.screen_name); withAlts = true; }
+				}
+				if (wanted.size > 50) throw new AdminError("That's over 50 accounts with alts included. Strike fewer at a time.");
+			}
+			const results: { id: string; screen_name: string; ok: boolean; why?: string; strikes?: number; outcome?: string }[] = [];
+			for (const [id, name] of wanted) {
+				if (id === a.id) { results.push({ id, screen_name: name || a.screen_name, ok: false, why: "your own account" }); continue; }
+				try {
+					const u = await guard(a, id, true);
+					const message = newId();
+					await sql`insert into staff_messages (id, user_id, actor_id, kind, body) values (${message}::bigint, ${id}::bigint, ${a.id}::bigint, 'strike', ${body})`;
+					const escalation = b.escalate !== false ? await escalate(id, a.id, `bulk strike from @${a.screen_name}`) : undefined;
+					results.push({ id, screen_name: u.screen_name, ok: true, strikes: escalation?.strikes, outcome: escalation?.outcome });
+				} catch (e) {
+					if (e instanceof AdminError) results.push({ id, screen_name: name, ok: false, why: e.message });
+					else throw e;
+				}
+			}
+			const struck = results.filter((r) => r.ok);
+			await audit(a, "bulk_strike", null, { count: struck.length, ids: struck.map((r) => r.id), escalate: b.escalate !== false, alts: withAlts });
+			return { results, missing };
+		},
+	},
 
 	appeals: {
 		role: "moderator",
