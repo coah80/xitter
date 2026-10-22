@@ -5,7 +5,8 @@ import { sql } from "./db";
 import { feature, settings } from "./settings";
 import { loadMenuFacts } from "./tidy";
 import { xitterSections } from "./xitter-menu";
-import { renderSettingsShell, settingsChrome, settingsHome, SHELL_CSS } from "./settings-shell";
+import { FRAMED_HEADERS } from "./owned-paths";
+import { renderSettingsShell, settingsChrome, SHELL_CSS } from "./settings-shell";
 
 export const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
@@ -180,8 +181,12 @@ export async function accountPage({ req, title, body, viewer, status = 200, back
 	const night = parseCookies(req).night_mode;
 	let look: ReturnType<typeof readPrefs>["look"] = null;
 	let extra = "";
+	// changes when the theme or the avatar decoration does: the client around a
+	// framed page reloads to show it
+	let lookKey = "";
 	if (viewer) {
-		const [row] = await sql`select preferences from users where id = ${viewer.id}::bigint`;
+		const [row] = await sql`select preferences, decoration from users where id = ${viewer.id}::bigint`;
+		lookKey = Bun.hash(JSON.stringify([row?.preferences ?? null, row?.decoration ?? null])).toString(36);
 		const prefs = readPrefs(row?.preferences);
 		look = prefs.look;
 		extra = look?.kind === "painted" ? `:root[data-theme]{${accountVars(look.theme)}}` : `:root{${accentVars(prefs.accent)}}`;
@@ -198,8 +203,6 @@ export async function accountPage({ req, title, body, viewer, status = 200, back
 			body,
 			back: sectionBack,
 			sections: xitterSections(facts),
-			home: settingsHome({ premium: feature("premium"), creatorStudio: feature("creator_studio") }),
-			rail: { screenName: viewer.screen_name, admin: !!facts.role && !facts.staffGate },
 			sourceName: name,
 			sourceUrl: settings().source_url,
 		});
@@ -209,6 +212,7 @@ export async function accountPage({ req, title, body, viewer, status = 200, back
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="${theme ? TOKENS[theme].scheme : "light dark"}">
+<meta name="xitter-look" content="${lookKey}">
 <title>${esc(title)} · ${esc(name)}</title>
 <link rel="icon" type="image/png" href="/public/favicon.png">
 ${head}
@@ -218,7 +222,7 @@ ${head}
 ${frame}
 </body>
 </html>`;
-		return pageResponse(html, { status, cache, referrer, cookies: nightModeCookies(look) });
+		return pageResponse(html, { status, cache, referrer, cookies: nightModeCookies(look), framed: true });
 	}
 	const html = `<!doctype html>
 <html lang="en"${theme ? ` data-theme="${theme}"` : ""}>
@@ -246,8 +250,10 @@ ${body}
 	return pageResponse(html, { status, cache, referrer, cookies: viewer ? nightModeCookies(look) : [] });
 }
 
-function pageResponse(html: string, opts: { status: number; cache: string; referrer: string | null; cookies: readonly string[] }): Response {
-	const headers = new Headers({ "content-type": "text/html; charset=utf-8", "cache-control": opts.cache, "x-frame-options": "DENY", "content-security-policy": "frame-ancestors 'none'" });
+function pageResponse(html: string, opts: { status: number; cache: string; referrer: string | null; cookies: readonly string[]; framed?: boolean }): Response {
+	// Xitter's settings pages sit in a frame of this site's own client (tidy.ts);
+	// nothing else may frame any of these pages
+	const headers = new Headers({ "content-type": "text/html; charset=utf-8", "cache-control": opts.cache, ...(opts.framed ? FRAMED_HEADERS : { "x-frame-options": "DENY", "content-security-policy": "frame-ancestors 'none'" }) });
 	if (opts.referrer) headers.set("referrer-policy", opts.referrer);
 	for (const c of opts.cookies) headers.append("set-cookie", c);
 	return new Response(html, { status: opts.status, headers });

@@ -6,7 +6,6 @@ import { knownOperation, runOperation } from "./graphql";
 import { brandingFile } from "./branding";
 import { handleLogin, maintenancePage, rulesPage } from "./login";
 import { adminApi, audit } from "./admin";
-import { RAIL_CSS, railNav } from "./settings-shell";
 import { loadSettings, settings } from "./settings";
 import { flagPickerData } from "./flag-picker";
 import { flagSvg } from "./flags";
@@ -71,7 +70,7 @@ import { failInterrupted } from "./migration-import";
 import { migrateRoute } from "./migration-page";
 import { acceptedEncoding, compressResponse, compressedFile } from "./compress";
 import { forgetRanking } from "./ranking";
-import { blocksClientShell, trailingSlashTarget, xitterNotFoundPage } from "./owned-paths";
+import { blocksClientShell, clientRouteFor, FRAMED_HEADERS, opensInTab, trailingSlashTarget, xitterNotFoundPage } from "./owned-paths";
 
 const MIME: Record<string, string> = {
 	js: "text/javascript; charset=utf-8",
@@ -130,14 +129,9 @@ const etags = new WeakMap<Buffer, string>();
 // The panel names the instance in its markup and in its scripts' single-quoted
 // strings; as entities the name is safe in both.
 const ADMIN_ENTITIES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;", "\\": "&#92;" };
-const adminPage = async (viewer: { screen_name: string }) => {
+const adminPage = async () => {
 	const name = settings().instance_name.replace(/[&<>"'\\]/g, (c) => ADMIN_ENTITIES[c]);
-	// the same app rail as the Xitter settings pages, so the panel has a way back out
-	const rail = railNav({ screenName: viewer.screen_name, admin: true, name: settings().instance_name, current: "admin" });
-	return (await Bun.file(new URL("./admin.html", import.meta.url)).text())
-		.replaceAll("{{instance}}", () => name)
-		.replace("{{railcss}}", () => RAIL_CSS)
-		.replace("{{rail}}", () => rail);
+	return (await Bun.file(new URL("./admin.html", import.meta.url)).text()).replaceAll("{{instance}}", () => name);
 };
 
 function staffBlockedPage(reason: string) {
@@ -418,7 +412,7 @@ async function route(req: Request): Promise<Response | undefined> {
 	// and X's automated-account flow (automation.ts)
 	if (p === "/i/flow/enable_automated_account") return Response.redirect("/account/automation", 302);
 	// and X's passkey settings and flows: ours is a page (passkeys.ts)
-	if (/^\/(settings|i\/flow)\/.*passkey/i.test(p)) return Response.redirect("/account/passkeys", 302);
+	if (/^\/(settings|i\/flow)\/.*passkey/i.test(p) && !p.startsWith("/settings/xitter/")) return Response.redirect("/account/passkeys", 302);
 	// the built-in "All" list (lists.ts)
 	if (p === "/all") return Response.redirect("/i/lists/1", 302);
 	if (p === "/login" || p === "/signup" || p.startsWith("/i/flow/")) {
@@ -445,6 +439,12 @@ async function route(req: Request): Promise<Response | undefined> {
 		return maintenancePage();
 	}
 	if (p === "/oauth/authorize") return oauthAuthorize(req, url, viewer);
+	// a tab opening a Xitter settings page goes to its place in the client's
+	// Settings, which frames the page (tidy.ts)
+	if (viewer && req.method === "GET" && opensInTab(req)) {
+		const to = clientRouteFor(p);
+		if (to) return Response.redirect(to + url.search, 302);
+	}
 	if (p === "/account/xitter" && viewer) return xitterHome(req, viewer);
 	if (p === "/account/apps" && viewer) return connectedAppsRoute(req, viewer);
 	if (p === "/account/apps/developer" && viewer) return developerAppsRoute(req, viewer);
@@ -495,10 +495,14 @@ async function route(req: Request): Promise<Response | undefined> {
 		await audit(viewer, "download_backup", null, { name });
 		return new Response(Bun.file(file), { headers: { "content-type": "application/octet-stream", "content-disposition": `attachment; filename="${name}"`, "cache-control": "no-store" } });
 	}
+	// the panel: a tab gets the client, which draws its own nav and frames the
+	// panel beside it (tidy.ts); the frame, or a script, gets the panel itself
+	let hostAdmin = false;
 	if ((p === "/admin" || p === "/admin/") && viewer?.role) {
 		const blocked = await staffGate(req, viewer);
 		if (blocked) return staffBlockedPage(blocked);
-		return new Response(await adminPage(viewer), { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+		if (!opensInTab(req)) return new Response(await adminPage(), { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", ...FRAMED_HEADERS } });
+		hostAdmin = true;
 	}
 	if (p === "/_debug/unknown" && viewer?.role === "admin") return Response.json(Object.fromEntries([...unknown].sort((a, b) => b[1] - a[1])));
 	if (API_PREFIX.test(p) || req.method !== "GET") {
@@ -516,7 +520,7 @@ async function route(req: Request): Promise<Response | undefined> {
 	if (!viewer && p !== "/" && !p.startsWith("/i/jf/onboarding")) return Response.redirect("/", 302);
 	// maintenance: guests see the notice; ?staff=1 is the sign-in page, for staff
 	if (!viewer && p === "/" && settings().operations.maintenance && !url.searchParams.has("staff")) return maintenancePage(true);
-	if (viewer && blocksClientShell(p)) return xitterNotFoundPage();
+	if (viewer && blocksClientShell(p) && !hostAdmin) return xitterNotFoundPage();
 	const [communityRows, flagRows, facts] = viewer
 		? await Promise.all([
 			sql`select 1 from community_members where user_id = ${viewer.id}::bigint limit 1`,

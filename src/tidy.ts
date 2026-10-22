@@ -9,6 +9,7 @@ import { type Feature, feature, settings } from "./settings";
 import type { Viewer } from "./auth";
 import { staffGate } from "./staff-access";
 import { superadminOf } from "./superadmins";
+import { FRAMED_ROOTS, XITTER_SECTION } from "./owned-paths";
 import { publicMenuLinks, type ClientPayload, type MenuFacts, type MenuLink } from "./xitter-menu";
 
 export type { MenuLink };
@@ -53,9 +54,18 @@ const ALWAYS = [
 	'nav[aria-label="Footer"] > div:has(> a[href^="/i/jf/stories"])',
 ];
 
+// the frame over the column the client leaves empty (TIDY_SCRIPT's sync)
+export const FRAME_CSS = `#xitter-frame{position:fixed;display:none;border:0;margin:0;padding:0;z-index:0;background:transparent;color-scheme:normal}
+html[data-xitter-frame] #xitter-frame{display:block}
+html[data-xitter-frame="settings"] [aria-label="Section details"]>*{display:none}
+html[data-xitter-frame="settings-phone"] main[role="main"]>*,html[data-xitter-frame="admin"] main[role="main"]>*{visibility:hidden}
+html[data-xitter-frame],html[data-xitter-frame] body{overflow:hidden}
+html[data-xitter-frame]{top:0!important}`;
+
 export function hideCss(): string {
 	const off = (Object.keys(BY_FEATURE) as Feature[]).filter((f) => !feature(f)).flatMap((f) => BY_FEATURE[f]);
-	return `${[...ALWAYS, ...off].join(",")}{display:none!important}
+	return `${FRAME_CSS}
+${[...ALWAYS, ...off].join(",")}{display:none!important}
 #xitter-announcement{display:flex;gap:12px;align-items:flex-start;padding:12px 16px;background:var(--xt-accent-fill,var(--xt-accent,#1d9bf0));color:#fff;font:15px TwitterChirp,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
 #xitter-announcement .xa-body{flex:1;min-width:0;display:grid;gap:10px}
 #xitter-announcement .xa-text{white-space:pre-wrap;overflow-wrap:break-word}
@@ -96,7 +106,7 @@ export async function menuLinks(req: Request, viewer: Viewer): Promise<MenuLink[
 
 // what the script needs to know, as window.__XITTER__.tidy
 const XITTER_ROW = {
-	href: "/account/xitter",
+	href: XITTER_SECTION,
 	text: "Xitter",
 	description: "Theme, profile decor, apps, and the other things this instance adds.",
 	icon: "M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z",
@@ -122,6 +132,8 @@ export function tidyData(links: MenuLink[] = [], staff?: ClientPayload["staff"])
 		source: s.source_url,
 		links,
 		xitter: XITTER_ROW,
+		// the pages framed into the client's Settings (owned-paths.ts)
+		framed: FRAMED_ROOTS,
 		...(staff ? { staff } : {}),
 	};
 }
@@ -222,7 +234,7 @@ export const TIDY_SCRIPT = `(function(){
 		// Settings > Automation's "Set up account automation" (automation.ts)
 		if(p.indexOf("/i/flow/enable_automated_account")===0)location.replace("/account/automation");
 		// Settings > Security's passkey screens and X's add-a-passkey flow talk to its servers (passkeys.ts)
-		if(/passkey/i.test(p)&&(p.indexOf("/settings/")===0||p.indexOf("/i/flow/")===0))location.replace("/account/passkeys");
+		if(/passkey/i.test(p)&&p.indexOf("/settings/xitter/")!==0&&(p.indexOf("/settings/")===0||p.indexOf("/i/flow/")===0))location.replace("/account/passkeys");
 	}
 	// the signed-out footer ends with X's copyright (its name already the
 	// instance's, patch.ts): the instance's name and source instead
@@ -281,12 +293,40 @@ export const TIDY_SCRIPT = `(function(){
 		var box=sampleBox.cloneNode(true);
 		var link=box.querySelector("a");
 		if(!link)return;
-		leave(link,spec.href);
+		link.setAttribute("href",spec.href);
+		link.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();spa(spec.href)},true);
 		link.removeAttribute("data-testid");
+		link.removeAttribute("aria-selected");
 		link.setAttribute("data-xitter-settings","");
 		var title=link.querySelector("span");
 		if(title)title.textContent=spec.text;
 		accountBox.parentElement.insertBefore(box,accountBox.nextSibling);
+	}
+	// the Settings list marks the open section by a class on the row's wrapper
+	// and an extra child (its edge); the Xitter row copies them from a row the
+	// client marked, remembered for when no row is marked
+	function activeRow(){
+		var mine=document.querySelector("a[data-xitter-settings]"),wrap=mine&&mine.parentElement;
+		var marked=[].find.call(document.querySelectorAll('[data-testid="activeRoute"]'),function(w){return w!==wrap&&w.children.length>1});
+		var seen=null;
+		if(marked){seen={wrap:marked.className,edge:marked.lastElementChild.className};try{localStorage.setItem("xitter-active-row",JSON.stringify(seen))}catch(e){}}
+		if(!wrap)return;
+		var on=location.pathname===T.xitter.href||location.pathname.indexOf(T.xitter.href+"/")===0;
+		if(on===wrap.hasAttribute("data-on"))return;
+		wrap.toggleAttribute("data-on",on);
+		var edge=wrap.querySelector("[data-xitter-edge]");
+		if(!on){if(edge)edge.remove();if(wrap.dataset.plain!==undefined)wrap.className=wrap.dataset.plain;wrap.style.backgroundColor="";return}
+		if(!seen)try{seen=JSON.parse(localStorage.getItem("xitter-active-row")||"null")}catch(e){}
+		wrap.dataset.plain=wrap.className;
+		edge=document.createElement("div");edge.setAttribute("data-xitter-edge","");
+		if(seen){wrap.className=seen.wrap;edge.className=seen.edge}
+		wrap.appendChild(edge);
+		// a client that never marked a row this session may not have the classes' rules yet
+		if(getComputedStyle(wrap).backgroundColor==="rgba(0, 0, 0, 0)"){
+			var bg=getComputedStyle(document.body).backgroundColor;
+			wrap.style.backgroundColor=getComputedStyle(document.documentElement).getPropertyValue("--xt-hover")||(bg==="rgb(255, 255, 255)"?"rgb(247, 249, 249)":bg==="rgb(21, 32, 43)"?"rgb(30, 39, 50)":"rgb(22, 24, 28)");
+			edge.style.cssText="position:absolute;inset:0;pointer-events:none;border-right:2px solid var(--xt-accent,rgb(29, 155, 240))";
+		}
 	}
 	function staffNav(){
 		var spec=T.staff&&T.staff.nav;
@@ -298,7 +338,8 @@ export const TIDY_SCRIPT = `(function(){
 		var item=sample.parentElement&&sample.parentElement!==nav?sample.parentElement:sample;
 		var box=item.cloneNode(true);
 		var link=box.querySelector("a")||box;
-		leave(link,spec.href);
+		link.setAttribute("href",spec.href);link.setAttribute("data-xitter-link","");
+		link.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();spa(spec.href)},true);
 		link.removeAttribute("data-testid");
 		link.removeAttribute("aria-current");
 		var active=location.pathname==="/admin"||location.pathname.indexOf("/admin/")===0;
@@ -323,6 +364,108 @@ export const TIDY_SCRIPT = `(function(){
 		else if(parent)parent.appendChild(box);
 		else item.parentElement.appendChild(box);
 	}
+	// Xitter's settings pages and the admin panel sit in the client's own
+	// layout: the client draws its nav and its Settings list, and the page
+	// (served at its /account or /admin address) fills a frame over the
+	// column the client leaves empty. Links in the frame move the client.
+	var ROOTS=T.framed||[];
+	function chrome(p){return ROOTS.some(function(r){return p===r||p.indexOf(r+"/")===0})}
+	function routeFor(p){
+		if(p==="/account/xitter")return "/settings/xitter";
+		if(p==="/federation/superadmin")return "/settings/xitter/superadmin";
+		if(p.indexOf("/account/")===0&&chrome(p))return "/settings/xitter/"+p.slice(9);
+		return null;
+	}
+	function framedFor(p){
+		if(p==="/settings/xitter")return "/account/xitter";
+		if(p==="/settings/xitter/superadmin")return "/federation/superadmin";
+		if(p.indexOf("/settings/xitter/")!==0)return null;
+		var page="/account/"+p.slice(17);
+		return chrome(page)?page:null;
+	}
+	var nativePush=History.prototype.pushState,nativeReplace=History.prototype.replaceState;
+	// the client's router follows popstate, so a pushed address plus one renders it
+	function spa(path){
+		if(path===location.pathname+location.search+location.hash)return;
+		nativePush.call(history,{},"",path);
+		dispatchEvent(new PopStateEvent("popstate",{state:{}}));
+		sync();
+	}
+	function go(path){
+		var u;try{u=new URL(path,location.origin)}catch(e){return}
+		if(u.origin!==location.origin){location.assign(u.href);return}
+		var r=routeFor(u.pathname);
+		if(r){spa(r+u.search);return}
+		if(u.pathname==="/admin"&&T.staff&&T.staff.nav){spa("/admin"+u.hash);return}
+		if(u.pathname.indexOf("/account/")===0||u.pathname.indexOf("/admin")===0||u.pathname.indexOf("/federation/")===0||u.pathname.indexOf("/oauth/")===0||u.pathname.indexOf("/media/")===0){location.assign(u.href);return}
+		spa(u.pathname+u.search+u.hash);
+	}
+	var frame=null,frameAt="",look=null,lastOut="";
+	function place(host,kind){
+		var r=host.getBoundingClientRect();
+		var bar=document.querySelector('[data-testid="BottomBar"]'),bb=bar&&bar.getBoundingClientRect();
+		var bottom=bb&&bb.height>0&&bb.top>0?bb.top:innerHeight;
+		var top=kind==="settings"?Math.max(0,r.top):Math.max(0,r.top);
+		var left=r.left+(host.clientLeft||0),width=host.clientWidth||r.width;
+		var css="left:"+left+"px;top:"+top+"px;width:"+width+"px;height:"+Math.max(0,bottom-top)+"px";
+		if(frame.getAttribute("data-at")!==css){frame.setAttribute("data-at",css);frame.style.cssText=css}
+	}
+	function sync(){
+		var p=location.pathname,kind=null,want=null,f=framedFor(p);
+		if(f){kind="settings";want=f+location.search}
+		else if(p==="/admin"&&T.staff&&T.staff.nav){kind="admin";want="/admin"+location.hash}
+		var html=document.documentElement;
+		if(!kind){
+			if(html.hasAttribute("data-xitter-frame"))html.removeAttribute("data-xitter-frame");
+			var here=p+location.search;
+			if(here!==lastOut){lastOut=here;try{sessionStorage.setItem("xitter-admin-from",here)}catch(e){}}
+			return;
+		}
+		var host=kind==="settings"?document.querySelector('[aria-label="Section details"]'):null;
+		var phone=!host;
+		host=host||document.querySelector('main[role="main"]');
+		if(!host)return;
+		var mode=kind+(phone&&kind==="settings"?"-phone":"");
+		if(html.getAttribute("data-xitter-frame")!==mode)html.setAttribute("data-xitter-frame",mode);
+		if(!frame){
+			frame=document.createElement("iframe");
+			frame.id="xitter-frame";
+			frame.title=kind==="admin"?"Admin":"Xitter";
+			frame.src=want;frameAt=want;
+		}else if(frameAt!==want){
+			var was=frameAt;frameAt=want;
+			if(kind==="admin"&&was.indexOf("/admin")===0){try{frame.contentWindow.location.hash=location.hash}catch(e){frame.src=want}}
+			else{try{frame.contentWindow.location.replace(want)}catch(e){frame.src=want}}
+		}
+		// beside X's #layers (menus, dialogs, the chat drawer) so those stay on top
+		var layers=document.getElementById("layers"),at=layers&&layers.parentElement;
+		if(at&&frame.nextSibling!==layers)at.insertBefore(frame,layers);
+		else if(!at&&!frame.parentElement)document.body.appendChild(frame);
+		place(host,kind);
+		// the client's empty-page screen is taller than the window; framed, the
+		// page itself never scrolls (the frame does)
+		if(scrollY)scrollTo(0,0);
+	}
+	addEventListener("scroll",function(){if(scrollY&&document.documentElement.hasAttribute("data-xitter-frame"))scrollTo(0,0)},{passive:true});
+	addEventListener("popstate",function(){setTimeout(sync,0)});
+	addEventListener("resize",function(){sync()});
+	addEventListener("message",function(e){
+		if(e.origin!==location.origin||!frame||e.source!==frame.contentWindow||!e.data||!e.data.xitter)return;
+		var d=e.data;
+		if(d.type==="go")go(d.path);
+		else if(d.type==="back")go(sessionStorage.getItem("xitter-admin-from")||"/settings/xitter");
+		else if(d.type==="hash"){
+			if(location.pathname==="/admin"&&location.hash!==d.hash){frameAt="/admin"+d.hash;nativeReplace.call(history,history.state,"","/admin"+d.hash)}
+		}else if(d.type==="page"){
+			// the frame moved on its own (a form, a redirect): the address follows
+			var u=new URL(d.path,location.origin),r=routeFor(u.pathname);
+			frameAt=u.pathname+u.search;
+			if(r&&r+u.search!==location.pathname+location.search)nativeReplace.call(history,history.state,"",r+u.search);
+			if(d.title)document.title=d.title;
+			// a saved theme or decoration: the client shows it after a reload
+			if(look===null)look=d.look;else if(d.look&&d.look!==look)location.reload();
+		}
+	});
 	function twoFactorRow(){
 		var a=document.querySelector('a[href="/settings/account/login_verification"]');
 		if(!a)return;
@@ -390,7 +533,11 @@ export const TIDY_SCRIPT = `(function(){
 		footer();
 		menuLinks();
 		xitterRow();
+		activeRow();
+		var adm=document.querySelector('header[role="banner"] a[href="/admin"][data-xitter-link]');
+		if(adm){var w=location.pathname==="/admin"?"700":"400";if(adm.style.fontWeight!==w){adm.style.fontWeight=w;[].forEach.call(adm.querySelectorAll("span"),function(n){n.style.fontWeight=w})}}
 		staffNav();
+		sync();
 		twoFactorRow();
 		navWidth();
 		announce();
