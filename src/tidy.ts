@@ -58,7 +58,8 @@ const ALWAYS = [
 export const FRAME_CSS = `#xitter-frame{position:fixed;display:none;border:0;margin:0;padding:0;z-index:0;background:transparent;color-scheme:normal}
 html[data-xitter-frame] #xitter-frame{display:block}
 html[data-xitter-frame="settings"] [aria-label="Section details"]>*{display:none}
-html[data-xitter-frame="settings-phone"] main[role="main"]>*,html[data-xitter-frame="admin"] main[role="main"]>*{visibility:hidden}
+html[data-xitter-frame="settings-phone"] main[role="main"]>*,html[data-xitter-frame="admin"] main[role="main"]>*,html[data-xitter-frame="admin-full"] main[role="main"]>*{visibility:hidden}
+html[data-xitter-frame="settings-phone"] [data-testid="TopNavBar"],html[data-xitter-frame="admin-full"] [data-testid="TopNavBar"]{display:none}
 html[data-xitter-frame],html[data-xitter-frame] body{overflow:hidden}
 html[data-xitter-frame]{top:0!important}`;
 
@@ -401,12 +402,24 @@ export const TIDY_SCRIPT = `(function(){
 		spa(u.pathname+u.search+u.hash);
 	}
 	var frame=null,frameAt="",look=null,lastOut="";
-	function place(host,kind){
+	function place(host,kind,phone,full){
 		var r=host.getBoundingClientRect();
 		var bar=document.querySelector('[data-testid="BottomBar"]'),bb=bar&&bar.getBoundingClientRect();
 		var bottom=bb&&bb.height>0&&bb.top>0?bb.top:innerHeight;
-		var top=kind==="settings"?Math.max(0,r.top):Math.max(0,r.top);
-		var left=r.left+(host.clientLeft||0),width=host.clientWidth||r.width;
+		var top=Math.max(0,r.top),left=r.left+(host.clientLeft||0),width=host.clientWidth||r.width;
+		if(phone&&kind==="settings"){
+			// with one column (a phone, or a narrow window) the page takes
+			// over from the top, with its own header where X puts one on its
+			// single-column settings pages; the clamp below keeps the part
+			// of the client's oversized column that is on screen
+			top=0;
+		}
+		if(full){top=0;left=0;width=innerWidth}
+		// the column the client leaves for a route it does not know is laid
+		// out wider than the window and shifted off its left edge: keep the
+		// frame inside the window, over the part that is actually visible
+		if(left<0){width+=left;left=0}
+		if(left+width>innerWidth)width=Math.max(0,innerWidth-left);
 		var css="left:"+left+"px;top:"+top+"px;width:"+width+"px;height:"+Math.max(0,bottom-top)+"px";
 		if(frame.getAttribute("data-at")!==css){frame.setAttribute("data-at",css);frame.style.cssText=css}
 	}
@@ -425,7 +438,12 @@ export const TIDY_SCRIPT = `(function(){
 		var phone=!host;
 		host=host||document.querySelector('main[role="main"]');
 		if(!host)return;
-		var mode=kind+(phone&&kind==="settings"?"-phone":"");
+		// a tab that opened /admin itself leaves the client on a route it does
+		// not know, whose column is wider than the window: the panel takes
+		// the whole screen there instead of following that column off it
+		var hr=host.getBoundingClientRect();
+		var full=kind==="admin"&&(hr.left<-1||hr.width>innerWidth+1);
+		var mode=kind+(phone&&kind==="settings"?"-phone":full?"-full":"");
 		if(html.getAttribute("data-xitter-frame")!==mode)html.setAttribute("data-xitter-frame",mode);
 		if(!frame){
 			frame=document.createElement("iframe");
@@ -441,7 +459,7 @@ export const TIDY_SCRIPT = `(function(){
 		var layers=document.getElementById("layers"),at=layers&&layers.parentElement;
 		if(at&&frame.nextSibling!==layers)at.insertBefore(frame,layers);
 		else if(!at&&!frame.parentElement)document.body.appendChild(frame);
-		place(host,kind);
+		place(host,kind,phone,full);
 		// the client's empty-page screen is taller than the window; framed, the
 		// page itself never scrolls (the frame does)
 		if(scrollY)scrollTo(0,0);
