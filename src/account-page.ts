@@ -242,7 +242,7 @@ ${body}
 	return pageResponse(html, { status, cache, referrer, cookies: viewer ? nightModeCookies(look) : [] });
 }
 
-function pageResponse(html: string, opts: { status: number; cache: string; referrer: string | null; cookies: string[] }): Response {
+function pageResponse(html: string, opts: { status: number; cache: string; referrer: string | null; cookies: readonly string[] }): Response {
 	const headers = new Headers({ "content-type": "text/html; charset=utf-8", "cache-control": opts.cache, "x-frame-options": "DENY", "content-security-policy": "frame-ancestors 'none'" });
 	if (opts.referrer) headers.set("referrer-policy", opts.referrer);
 	for (const c of opts.cookies) headers.append("set-cookie", c);
