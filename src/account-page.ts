@@ -195,7 +195,7 @@ export async function accountPage({ req, title, body, viewer, status = 200, back
 			body,
 			back: sectionBack,
 			sections: xitterSections(facts),
-			home: settingsHome(feature("premium")),
+			home: settingsHome({ premium: feature("premium"), creatorStudio: feature("creator_studio") }),
 			sourceName: name,
 			sourceUrl: settings().source_url,
 		});

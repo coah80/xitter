@@ -27,7 +27,7 @@ function shell(path: string, sections = xitterSections(facts())) {
 		body: "<h1>Theme</h1>",
 		back: { href: "/account/xitter", label: "Xitter" },
 		sections,
-		home: settingsHome(false),
+		home: settingsHome({ premium: false, creatorStudio: false }),
 		sourceName: "Xitter",
 		sourceUrl: "https://example.com",
 	});
@@ -52,8 +52,27 @@ test("the section is a list beside Settings, and a page replaces that list", () 
 	expect(page).toContain("<h1>Theme</h1>");
 	expect(page).toContain('href="/account/xitter"');
 	expect(page).toContain('aria-current="page"');
-	const second = settingsHome(false)[1];
-	expect(second).toEqual({ href: "/account/xitter", title: "Xitter", description: expect.any(String) });
+	const off = settingsHome({ premium: false, creatorStudio: false });
+	expect(off.map((row) => row.title)).toEqual([
+		"Your account",
+		"Xitter",
+		"Security and account access",
+		"Privacy and safety",
+		"Notifications",
+		"Accessibility, display, and languages",
+		"Additional resources",
+		"Help Center",
+	]);
+	expect(off[1]).toEqual({ href: "/account/xitter", title: "Xitter" });
+	expect(off.at(-1)).toEqual({ href: "https://support.x.com/", title: "Help Center", external: true });
+	const slist = home.slice(home.indexOf('data-pane="settings"'), home.indexOf('data-pane="xitter"'));
+	expect(slist).not.toContain("Monetization");
+	expect(slist).not.toContain('class="xd"');
+	expect(slist).toContain('target="_blank"');
+	const on = settingsHome({ premium: true, creatorStudio: true }).map((row) => row.title);
+	expect(on.indexOf("Xitter")).toBeLessThan(on.indexOf("Monetization"));
+	expect(on.indexOf("Monetization")).toBeLessThan(on.indexOf("Premium"));
+	expect(on.indexOf("Premium")).toBeLessThan(on.indexOf("Security and account access"));
 });
 
 test("a member payload has the Xitter row and no staff key", () => {

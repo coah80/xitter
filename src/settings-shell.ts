@@ -9,36 +9,45 @@ export function settingsChrome(pathname: string): boolean {
 }
 
 const CHEV = "M17.5 12 9 3.5 10.5 2l10 10-10 10L9 20.5 17.5 12z";
+const EXTERNAL = "M19 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6v2H5v12h12v-6h2zM14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42L17.59 5H14V3z";
 const SEARCH = "M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 5 1.5-1.5-5-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z";
 const ARROW = "M7.414 13l5.043 5.04-1.414 1.42L3.586 12l7.457-7.46 1.414 1.42L7.414 11H21v2H7.414z";
 
-export type HomeRow = { href: string; title: string; description: string };
+export type HomeRow = { href: string; title: string; external?: boolean };
 
-export function settingsHome(premium: boolean): HomeRow[] {
-	const rows: HomeRow[] = [
-		{ href: "/settings/account", title: "Your account", description: "See information about your account, download an archive of your data, or learn about your account deactivation options." },
-		{ href: "/account/xitter", title: "Xitter", description: "Theme, profile decor, apps, and the other things this instance adds." },
-		{ href: "/settings/monetization", title: "Monetization", description: "See how you can make money on X and manage your monetization options." },
-	];
-	if (premium) rows.push({ href: "/i/premium", title: "Premium", description: "Subscribe to Premium and manage your subscription." });
-	rows.push(
-		{ href: "/settings/security_and_account_access", title: "Security and account access", description: "Manage your account's security and keep track of your account's usage, including apps you have connected." },
-		{ href: "/settings/privacy_and_safety", title: "Privacy and safety", description: "Manage what information you see and share on X." },
-		{ href: "/settings/notifications", title: "Notifications", description: "Select the kinds of notifications you get about your activities, interests, and recommendations." },
-		{ href: "/settings/accessibility_display_and_languages", title: "Accessibility, display, and languages", description: "Manage how X content is displayed to you." },
-		{ href: "/settings/about", title: "Additional resources", description: "Check out other places for helpful information to learn more about X products and services." },
-	);
-	return rows;
+type SettingsEntry = HomeRow & { when?: "premium" | "creator_studio" };
+
+export const SETTINGS_HOME: readonly SettingsEntry[] = [
+	{ href: "/settings/account", title: "Your account" },
+	{ href: "/account/xitter", title: "Xitter" },
+	{ href: "/settings/monetization", title: "Monetization", when: "creator_studio" },
+	{ href: "/i/premium", title: "Premium", when: "premium" },
+	{ href: "/settings/security_and_account_access", title: "Security and account access" },
+	{ href: "/settings/privacy_and_safety", title: "Privacy and safety" },
+	{ href: "/settings/notifications", title: "Notifications" },
+	{ href: "/settings/accessibility_display_and_languages", title: "Accessibility, display, and languages" },
+	{ href: "/settings/about", title: "Additional resources" },
+	{ href: "https://support.x.com/", title: "Help Center", external: true },
+];
+
+export function settingsHome(flags: { premium: boolean; creatorStudio: boolean }): HomeRow[] {
+	return SETTINGS_HOME.flatMap((row) => {
+		if (row.when === "premium" && !flags.premium) return [];
+		if (row.when === "creator_studio" && !flags.creatorStudio) return [];
+		return [{ href: row.href, title: row.title, ...(row.external ? { external: true as const } : {}) }];
+	});
 }
 
 function searchBox(label: string): string {
 	return `<label class="xsearch"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${SEARCH}"/></svg><input type="search" placeholder="${esc(label)}" aria-label="${esc(label)}" data-xfilter></label>`;
 }
 
-function linkRow(href: string, title: string, description: string, on: boolean, icon?: string, viewBox?: string): string {
+function linkRow(href: string, title: string, description: string, on: boolean, icon?: string, viewBox?: string, external?: boolean): string {
 	const mark = on ? ' aria-current="page"' : "";
 	const glyph = icon ? `<span class="xic"><svg viewBox="${esc(viewBox || "0 0 24 24")}" aria-hidden="true"><path d="${icon}"/></svg></span>` : "";
-	return `<a class="xrow" href="${esc(href)}" data-find="${esc(`${title} ${description}`.toLowerCase())}"${mark}>${glyph}<span class="xtx"><span class="xt">${esc(title)}</span>${description ? `<span class="xd">${esc(description)}</span>` : ""}</span><span class="xch" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="${CHEV}"/></svg></span></a>`;
+	const away = external ? ' target="_blank" rel="noopener noreferrer"' : "";
+	const trail = external ? EXTERNAL : CHEV;
+	return `<a class="xrow" href="${esc(href)}" data-find="${esc(`${title} ${description}`.toLowerCase())}"${mark}${away}>${glyph}<span class="xtx"><span class="xt">${esc(title)}</span>${description ? `<span class="xd">${esc(description)}</span>` : ""}</span><span class="xch" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="${trail}"/></svg></span></a>`;
 }
 
 function header(title: string, back?: { href: string; label: string }): string {
@@ -50,7 +59,7 @@ export function renderSettingsShell(opts: { path: string; title: string; body: s
 	const home = opts.path === "/account/xitter";
 	const depth = home ? "1" : "2";
 	const here = (href: string) => opts.path === href || opts.path.startsWith(`${href}/`);
-	const list = opts.home.map((row) => linkRow(row.href, row.title, row.description, row.href === "/account/xitter")).join("");
+	const list = opts.home.map((row) => linkRow(row.href, row.title, "", row.href === "/account/xitter", undefined, undefined, row.external)).join("");
 	const groups = opts.sections
 		.map((section) => {
 			const notes = (section.notes ?? []).map((note) => `<p class="xnote">${esc(note)}</p>`).join("");
