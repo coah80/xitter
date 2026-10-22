@@ -99,7 +99,7 @@ body{margin:0;background:var(--bg);color:var(--text);font:15px/20px var(--font, 
 .tabs span{position:relative;display:block;padding:16px 0;white-space:nowrap}
 .tabs a[aria-current]{color:var(--text);font-weight:700}
 .tabs a[aria-current] span::after{content:"";position:absolute;left:0;right:0;bottom:0;height:4px;border-radius:9999px;background:var(--accent-fill,var(--accent))}
-main{flex:1;padding:16px;display:flex;flex-direction:column;gap:12px}
+main{flex:1;padding:16px 16px 96px;display:flex;flex-direction:column;gap:12px}
 h1,h2,p,pre{margin:0}
 h1{font-size:23px;line-height:28px;font-weight:800;text-wrap:balance}
 h2{font-size:20px;line-height:24px;font-weight:800;margin-top:16px;text-wrap:balance}
@@ -125,6 +125,8 @@ button.secondary{background:transparent;border-color:var(--outline);color:var(--
 button.danger{background:var(--danger);color:#fff}
 button.small{min-height:32px;padding:0 14px;font-size:14px}
 button:disabled{opacity:.5;cursor:default}
+.save,.savebar{position:sticky;bottom:16px;z-index:4;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;width:max-content;max-width:100%;margin-left:auto;padding:0;background:transparent;border:0}
+.save button,.savebar button{box-shadow:0 2px 12px rgb(0 0 0 / .28)}
 @media (hover:hover){
 .back:hover,.tabs a:hover{background:var(--hover)}
 button:hover:not(:disabled){background:var(--accent-hover)}

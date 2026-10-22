@@ -109,8 +109,6 @@ ${pageChromeRules(PREVIEW_CHROME_SLOTS)}
 .warns{display:grid;gap:4px}
 .warns p{color:#8a5800;font-size:13px}
 :root[data-theme="dark"] .warns p,:root[data-theme="dim"] .warns p{color:#e6b800}
-.savebar{display:flex;gap:8px;align-items:center;width:100%;padding:4px 0 0}
-.savebar button[type=submit]{flex:1}
 #steam-shop{width:min(720px,calc(100vw - 32px));max-height:80vh;overflow:auto;border:1px solid var(--border);border-radius:16px;background:var(--surface);color:var(--text);padding:16px}
 #steam-shop::backdrop{background:rgb(0 0 0 / .6)}
 .shop{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}

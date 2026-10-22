@@ -53,7 +53,6 @@ const CSS = `
 .search{display:grid;gap:6px;margin-top:8px;font-size:14px;color:var(--muted)}
 .search input{color:var(--text)}
 #deco-count:empty{display:none}
-.save{position:sticky;bottom:0;padding:12px 0;background:var(--bg)}
 @media (hover:hover){.choice:hover,.styles label:hover,.gallery label:hover{background:var(--hover)}}
 `;
 
