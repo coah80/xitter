@@ -466,10 +466,10 @@ export const THEME_SCRIPT = String.raw`(function(){
 		add("iconFill","fill:var(--xt-icon)!important",false);
 		add("iconActiveFill","fill:var(--xt-icon-active)!important",false);
 		add("border","border-color:var(--xt-border)!important;border-bottom-color:var(--xt-divider)!important",false);
-		// the composer's Post and Reply buttons wear the accent, with the accent's
+		// the side bar's Post and the composer's Post and Reply buttons wear the accent, with the accent's
 		// text colour (accent rules below); the theme's button fill outranks those
 		// on specificity and left light text on a light pill
-		found.button=(found.button||[]).map(function(sel){return sel+':not([data-testid="tweetButton"]):not([data-testid="tweetButtonInline"])'});
+		found.button=(found.button||[]).map(function(sel){return sel+':not([data-testid="tweetButton"]):not([data-testid="tweetButtonInline"]):not([data-testid="SideNav_NewTweet_Button"])'});
 		add("button","background:var(--xt-button)!important",false);
 		add("buttonText","color:var(--xt-button-text)!important",false);
 		add("accentColor","color:var(--xt-accent)!important;fill:var(--xt-accent)!important",false);
@@ -536,8 +536,12 @@ export const THEME_SCRIPT = String.raw`(function(){
 		add('[style*="border-color: rgb(29, 155, 240)"]',"border-color:var(--xt-accent)!important");
 		add('[style*="border-color: rgb(26, 140, 216)"]',"border-color:var(--xt-accent-hover,var(--xt-accent))!important");
 		add('[style*="background-color: rgb(142, 205, 248)"]',"background-color:var(--xt-accent-tint)!important");
-		css.push('html[data-xitter-accent] [data-testid="tweetButton"],html[data-xitter-accent] [data-testid="tweetButtonInline"]{background:var(--xt-accent-fill,var(--xt-accent))!important;border-color:transparent!important}');
-		css.push('html[data-xitter-accent] [data-testid="tweetButton"] div,html[data-xitter-accent] [data-testid="tweetButtonInline"] div{color:var(--xt-accent-text,#fff)!important}');
+		// X paints its side bar Post white on dark and black on light (the
+		// "inverted" button); here every post action is the accent, X blue by
+		// default, with the accent's text colour
+		var POST='[data-testid="tweetButton"],[data-testid="tweetButtonInline"],[data-testid="SideNav_NewTweet_Button"]'.split(",");
+		css.push(POST.map(function(s){return "html[data-xitter-accent] "+s}).join(",")+'{background:var(--xt-accent-fill,var(--xt-accent))!important;border-color:transparent!important}');
+		css.push(POST.map(function(s){return "html[data-xitter-accent] "+s+" div,html[data-xitter-accent] "+s+" span,html[data-xitter-accent] "+s+" svg"}).join(",")+'{color:var(--xt-accent-text,#fff)!important}');
 		var next=css.join("");
 		if(next!==accentKey){
 			accentKey=next;
