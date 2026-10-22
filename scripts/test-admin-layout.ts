@@ -53,7 +53,7 @@ test("the admin panel has a way back out", () => {
 	expect(TIDY_SCRIPT).toContain('d.type==="back"');
 	expect(TIDY_SCRIPT).toContain('sessionStorage.getItem("xitter-admin-from")');
 	expect(TIDY_SCRIPT).toContain('kind="admin"');
-	expect(hideCss()).toContain('html[data-xitter-frame="admin"]');
+	expect(hideCss()).toContain('html[data-xitter-host="admin"]');
 	// Superadmin is one of the framed pages, and only the real path is
 	expect(settingsChrome("/federation/superadmin")).toBe(true);
 	expect(settingsChrome("/federation/superadminx")).toBe(false);

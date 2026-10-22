@@ -56,12 +56,11 @@ const ALWAYS = [
 
 // the frame over the column the client leaves empty (TIDY_SCRIPT's sync)
 export const FRAME_CSS = `#xitter-frame{position:fixed;display:none;border:0;margin:0;padding:0;z-index:0;background:transparent;color-scheme:normal}
-html[data-xitter-frame] #xitter-frame{display:block}
-html[data-xitter-frame="settings"] [aria-label="Section details"]>*{display:none}
-html[data-xitter-frame="settings-phone"] main[role="main"]>*,html[data-xitter-frame="admin"] main[role="main"]>*,html[data-xitter-frame="admin-full"] main[role="main"]>*{visibility:hidden}
-html[data-xitter-frame="settings-phone"] [data-testid="TopNavBar"],html[data-xitter-frame="admin-full"] [data-testid="TopNavBar"]{display:none}
-html[data-xitter-frame],html[data-xitter-frame] body{overflow:hidden}
-html[data-xitter-frame]{top:0!important}`;
+html[data-xitter-host] #xitter-frame{display:block}
+html[data-xitter-host="settings"] [aria-label="Section details"]>*{display:none}
+html[data-xitter-host="settings-phone"] main[role="main"]>*,html[data-xitter-host="admin"] main[role="main"]>*{visibility:hidden}
+html[data-xitter-host="settings-phone"] [data-testid="TopNavBar"]{display:none}
+html[data-xitter-host],html[data-xitter-host] body{overflow:hidden}`;
 
 export function hideCss(): string {
 	const off = (Object.keys(BY_FEATURE) as Feature[]).filter((f) => !feature(f)).flatMap((f) => BY_FEATURE[f]);
@@ -402,7 +401,7 @@ export const TIDY_SCRIPT = `(function(){
 		spa(u.pathname+u.search+u.hash);
 	}
 	var frame=null,frameAt="",look=null,lastOut="";
-	function place(host,kind,phone,full){
+	function place(host,kind,phone){
 		var r=host.getBoundingClientRect();
 		var bar=document.querySelector('[data-testid="BottomBar"]'),bb=bar&&bar.getBoundingClientRect();
 		var bottom=bb&&bb.height>0&&bb.top>0?bb.top:innerHeight;
@@ -410,16 +409,9 @@ export const TIDY_SCRIPT = `(function(){
 		if(phone&&kind==="settings"){
 			// with one column (a phone, or a narrow window) the page takes
 			// over from the top, with its own header where X puts one on its
-			// single-column settings pages; the clamp below keeps the part
-			// of the client's oversized column that is on screen
+			// single-column settings pages
 			top=0;
 		}
-		if(full){top=0;left=0;width=innerWidth}
-		// the column the client leaves for a route it does not know is laid
-		// out wider than the window and shifted off its left edge: keep the
-		// frame inside the window, over the part that is actually visible
-		if(left<0){width+=left;left=0}
-		if(left+width>innerWidth)width=Math.max(0,innerWidth-left);
 		var css="left:"+left+"px;top:"+top+"px;width:"+width+"px;height:"+Math.max(0,bottom-top)+"px";
 		if(frame.getAttribute("data-at")!==css){frame.setAttribute("data-at",css);frame.style.cssText=css}
 	}
@@ -429,7 +421,7 @@ export const TIDY_SCRIPT = `(function(){
 		else if(p==="/admin"&&T.staff&&T.staff.nav){kind="admin";want="/admin"+location.hash}
 		var html=document.documentElement;
 		if(!kind){
-			if(html.hasAttribute("data-xitter-frame"))html.removeAttribute("data-xitter-frame");
+			if(html.hasAttribute("data-xitter-host"))html.removeAttribute("data-xitter-host");
 			var here=p+location.search;
 			if(here!==lastOut){lastOut=here;try{sessionStorage.setItem("xitter-admin-from",here)}catch(e){}}
 			return;
@@ -438,13 +430,8 @@ export const TIDY_SCRIPT = `(function(){
 		var phone=!host;
 		host=host||document.querySelector('main[role="main"]');
 		if(!host)return;
-		// a tab that opened /admin itself leaves the client on a route it does
-		// not know, whose column is wider than the window: the panel takes
-		// the whole screen there instead of following that column off it
-		var hr=host.getBoundingClientRect();
-		var full=kind==="admin"&&(hr.left<-1||hr.width>innerWidth+1);
-		var mode=kind+(phone&&kind==="settings"?"-phone":full?"-full":"");
-		if(html.getAttribute("data-xitter-frame")!==mode)html.setAttribute("data-xitter-frame",mode);
+		var mode=kind+(phone&&kind==="settings"?"-phone":"");
+		if(html.getAttribute("data-xitter-host")!==mode)html.setAttribute("data-xitter-host",mode);
 		if(!frame){
 			frame=document.createElement("iframe");
 			frame.id="xitter-frame";
@@ -459,12 +446,12 @@ export const TIDY_SCRIPT = `(function(){
 		var layers=document.getElementById("layers"),at=layers&&layers.parentElement;
 		if(at&&frame.nextSibling!==layers)at.insertBefore(frame,layers);
 		else if(!at&&!frame.parentElement)document.body.appendChild(frame);
-		place(host,kind,phone,full);
+		place(host,kind,phone);
 		// the client's empty-page screen is taller than the window; framed, the
 		// page itself never scrolls (the frame does)
 		if(scrollY)scrollTo(0,0);
 	}
-	addEventListener("scroll",function(){if(scrollY&&document.documentElement.hasAttribute("data-xitter-frame"))scrollTo(0,0)},{passive:true});
+	addEventListener("scroll",function(){if(scrollY&&document.documentElement.hasAttribute("data-xitter-host"))scrollTo(0,0)},{passive:true});
 	addEventListener("popstate",function(){setTimeout(sync,0)});
 	addEventListener("resize",function(){sync()});
 	addEventListener("message",function(e){

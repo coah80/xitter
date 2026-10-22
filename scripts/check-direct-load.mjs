@@ -1,7 +1,7 @@
 // Direct load, reload, and back/forward for every Xitter page.
 // In the frame model a browser tab never gets our pages on their own: the X
 // client loads and frames the page in #xitter-frame, with the mode on
-// <html data-xitter-frame>. So "the page works" means the client shell is
+// <html data-xitter-host>. So "the page works" means the client shell is
 // up, the frame is hosted, and the framed document has our content. The
 // plain pages are only for fetches (Sec-Fetch-Dest other than document).
 // Run with the server up: node scripts/check-direct-load.mjs
@@ -84,7 +84,7 @@ async function framed(p, label) {
 			const el = document.querySelector("#xitter-frame");
 			const doc = el && el.contentDocument;
 			return {
-				mode: document.documentElement.getAttribute("data-xitter-frame"),
+				mode: document.documentElement.getAttribute("data-xitter-host"),
 				text: doc && doc.body ? doc.body.innerText.trim().length : 0,
 			};
 		}).catch(() => ({ mode: null, text: 0 }));
@@ -95,7 +95,7 @@ async function framed(p, label) {
 		}
 		await new Promise((r) => setTimeout(r, 500));
 	}
-	throw new Error(mode ? `${label} framed an empty page` : `${label} is not framed (no data-xitter-frame)`);
+	throw new Error(mode ? `${label} framed an empty page` : `${label} is not framed (no data-xitter-host)`);
 }
 
 async function expectTop(p, want, label) {

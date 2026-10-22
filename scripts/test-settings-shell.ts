@@ -148,8 +148,12 @@ test("the client frames our pages over the columns it leaves empty", () => {
 	expect(TIDY_SCRIPT).toContain('a[href="/explore"]');
 	const css = hideCss();
 	expect(css).toContain("#xitter-frame{position:fixed");
-	expect(css).toContain('html[data-xitter-frame="settings"]');
-	expect(css).toContain('html[data-xitter-frame="settings-phone"]');
-	expect(css).toContain('html[data-xitter-frame="admin"]');
-	expect(css).toContain("html[data-xitter-frame]{top:0!important}");
+	expect(css).toContain('html[data-xitter-host="settings"]');
+	expect(css).toContain('html[data-xitter-host="settings-phone"]');
+	expect(css).toContain('html[data-xitter-host="admin"]');
+	expect(TIDY_SCRIPT).toContain('html.setAttribute("data-xitter-host",mode)');
+	// decor rings are [data-xitter-frame] and their CSS (absolute, -11% offsets,
+	// 122% size) would match the page's <html> if the host mode used that name
+	expect(TIDY_SCRIPT).not.toContain('"data-xitter-frame"');
+	expect(css).not.toContain("[data-xitter-frame");
 });
