@@ -23,6 +23,7 @@ const TOKENS: Record<Theme, Record<string, string>> = {
 		surface: "#f7f9f9",
 		hover: "rgb(15 20 25 / .1)",
 		logo: "url(/public/logo-light.png)",
+		icon: "url(/public/icon-light.png)",
 		scheme: "light",
 	},
 	dim: {
@@ -36,6 +37,7 @@ const TOKENS: Record<Theme, Record<string, string>> = {
 		surface: "#1e2732",
 		hover: "rgb(247 249 249 / .1)",
 		logo: "url(/public/logo-dark.png)",
+		icon: "url(/public/icon-dark.png)",
 		scheme: "dark",
 	},
 	dark: {
@@ -49,6 +51,7 @@ const TOKENS: Record<Theme, Record<string, string>> = {
 		surface: "#16181c",
 		hover: "rgb(231 233 234 / .1)",
 		logo: "url(/public/logo-dark.png)",
+		icon: "url(/public/icon-dark.png)",
 		scheme: "dark",
 	},
 };
@@ -196,6 +199,7 @@ export async function accountPage({ req, title, body, viewer, status = 200, back
 			back: sectionBack,
 			sections: xitterSections(facts),
 			home: settingsHome({ premium: feature("premium"), creatorStudio: feature("creator_studio") }),
+			rail: { screenName: viewer.screen_name, admin: !!facts.role && !facts.staffGate },
 			sourceName: name,
 			sourceUrl: settings().source_url,
 		});

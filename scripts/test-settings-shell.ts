@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { renderSettingsShell, settingsChrome, settingsHome } from "../src/settings-shell";
+import { renderSettingsShell, settingsChrome, settingsHome, SHELL_CSS } from "../src/settings-shell";
 import { tidyData } from "../src/tidy";
 import { xitterSections, type MenuFacts } from "../src/xitter-menu";
 
@@ -30,6 +30,7 @@ function shell(path: string, sections = xitterSections(facts())) {
 		home: settingsHome({ premium: false, creatorStudio: false }),
 		sourceName: "Xitter",
 		sourceUrl: "https://example.com",
+		rail: { screenName: "coah", admin: false },
 	});
 }
 
@@ -73,6 +74,34 @@ test("the section is a list beside Settings, and a page replaces that list", () 
 	expect(on.indexOf("Xitter")).toBeLessThan(on.indexOf("Monetization"));
 	expect(on.indexOf("Monetization")).toBeLessThan(on.indexOf("Premium"));
 	expect(on.indexOf("Premium")).toBeLessThan(on.indexOf("Security and account access"));
+	expect(home).toContain('aria-label="Primary"');
+	expect(home).toContain('href="/home"');
+	expect(home).toContain('href="/explore"');
+	expect(home).toContain('href="/notifications"');
+	expect(home).toContain('href="/i/chat"');
+	expect(home).toContain('href="/coah"');
+	expect(home).toContain('href="/settings"');
+	expect(home).toContain('href="/compose/post"');
+	const nav = home.slice(home.indexOf('aria-label="Primary"'), home.indexOf('class="xshell"'));
+	expect(nav).not.toContain('href="/admin"');
+	const staff = renderSettingsShell({
+		path: "/account/xitter",
+		title: "Theme",
+		body: "<h1>Theme</h1>",
+		back: { href: "/account/xitter", label: "Xitter" },
+		sections: xitterSections(facts()),
+		home: settingsHome({ premium: false, creatorStudio: false }),
+		sourceName: "Xitter",
+		sourceUrl: "https://example.com",
+		rail: { screenName: "coah", admin: true },
+	});
+	const staffNav = staff.slice(staff.indexOf('aria-label="Primary"'), staff.indexOf('class="xshell"'));
+	expect(staffNav).toContain('href="/admin"');
+	expect(staffNav.indexOf('href="/coah"')).toBeLessThan(staffNav.indexOf('href="/admin"'));
+	expect(staffNav.indexOf('href="/admin"')).toBeLessThan(staffNav.indexOf('href="/settings"'));
+	expect(SHELL_CSS).toContain(".xrail{display:none}");
+	expect(SHELL_CSS).toContain("max-width:1280px");
+	expect(SHELL_CSS).toContain("var(--icon)");
 });
 
 test("a member payload has the Xitter row and no staff key", () => {
