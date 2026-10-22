@@ -1,6 +1,8 @@
 import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { actionNeed } from "../src/staff-permissions";
+import { settingsChrome } from "../src/owned-paths";
+import { FRESH_SCRIPT, hideCss, TIDY_SCRIPT } from "../src/tidy";
 
 test("an action the role cannot run names the permission", () => {
 	expect(actionNeed("deletePost", "moderator")).toBe("Delete posts");
@@ -26,19 +28,33 @@ test("the admin panel is a searchable grouped list with a detail column", () => 
 	expect(html).toContain("overflow-wrap: anywhere");
 });
 
-test("the admin panel has a way back out", async () => {
-	const { railNav, RAIL_CSS, settingsChrome } = await import("../src/settings-shell");
+test("the admin panel has a way back out", () => {
 	const html = readFileSync(new URL("../src/admin.html", import.meta.url), "utf8");
-	expect(html).toContain("{{rail}}");
-	expect(html).toContain("{{railcss}}");
+	// no hand-made rail any more: in a tab the client draws its own nav and
+	// frames the panel over its main column (tidy.ts), so nothing here imitates it
+	expect(html).not.toContain("{{rail}}");
+	expect(html).not.toContain("{{railcss}}");
+	// standing alone, the panel's own head has a back arrow and a logo home
 	expect(html).toContain('id="navback" href="/account/xitter"');
 	expect(html).toContain('<a class="home" href="/home"');
-	expect(html).toContain('sessionStorage.getItem("xitter-admin-from")');
-	const rail = railNav({ screenName: "coah", admin: true, name: "Xitter", current: "admin" });
-	for (const href of ["/home", "/explore", "/notifications", "/i/chat", "/coah", "/settings", "/compose/post"]) expect(rail).toContain(`href="${href}"`);
-	expect(rail).toContain('href="/admin" aria-label="Admin" aria-current="page"');
-	expect(RAIL_CSS).toContain(".xrail{display:none}");
-	// Superadmin opens in the settings shell, with its rail and back arrow
+	// and its list ends with the way home, and Superadmin for a superadmin
+	expect(html).toContain("leaveTo(\\'/home\\')");
+	expect(html).toContain("Back to {{instance}}");
+	expect(html).toContain("leaveTo(\\'/federation/superadmin\\')");
+	// framed, leaving moves the client, not the frame: the back arrow asks the
+	// client for the place the panel was opened from, links out are handed over
+	expect(html).toContain("parent.postMessage");
+	expect(html).toContain('if (a.id === "navback") tell({ type: "back" });');
+	expect(html).toContain('tell({ type: "go", path');
+	expect(html).toContain('document.documentElement.setAttribute("data-framed", "")');
+	// the client remembers where the panel was opened from, answers "back" with
+	// it, and hosts the panel under its own frame mode
+	expect(FRESH_SCRIPT).toContain('sessionStorage.setItem("xitter-admin-from"');
+	expect(TIDY_SCRIPT).toContain('d.type==="back"');
+	expect(TIDY_SCRIPT).toContain('sessionStorage.getItem("xitter-admin-from")');
+	expect(TIDY_SCRIPT).toContain('kind="admin"');
+	expect(hideCss()).toContain('html[data-xitter-frame="admin"]');
+	// Superadmin is one of the framed pages, and only the real path is
 	expect(settingsChrome("/federation/superadmin")).toBe(true);
 	expect(settingsChrome("/federation/superadminx")).toBe(false);
 });
