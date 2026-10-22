@@ -2,8 +2,10 @@ import { parseCookies, type Viewer } from "./auth";
 import { loadBuild } from "./build";
 import { readCached } from "./client-cache";
 import { sql } from "./db";
-import { settings } from "./settings";
-import { menuLinks } from "./tidy";
+import { feature, settings } from "./settings";
+import { loadMenuFacts } from "./tidy";
+import { xitterSections } from "./xitter-menu";
+import { renderSettingsShell, settingsChrome, settingsHome, SHELL_CSS } from "./settings-shell";
 
 export const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
@@ -181,13 +183,37 @@ export async function accountPage({ req, title, body, viewer, status = 200, back
 	}
 	const theme = paletteOf(look, night);
 	const path = new URL(req.url).pathname;
-	const links = viewer ? await menuLinks(req, viewer) : [];
-	const tabs = links.length
-		? `<nav class="tabs" aria-label="Account pages">${links
-				.map((l) => `<a href="${l.href}"${path === l.href || path.startsWith(`${l.href}/`) ? ' aria-current="page"' : ""}><span>${esc(l.text)}</span></a>`)
-				.join("")}</nav>`
-		: "";
 	const to = back ?? { href: viewer ? "/home" : "/", label: `Back to ${name}` };
+	if (viewer && settingsChrome(path)) {
+		const facts = await loadMenuFacts(req, viewer);
+		const sectionBack = back?.href.startsWith("/account/") ? back : { href: "/account/xitter", label: "Xitter" };
+		const frame = renderSettingsShell({
+			path,
+			title,
+			body,
+			back: sectionBack,
+			sections: xitterSections(facts),
+			home: settingsHome(feature("premium")),
+			sourceName: name,
+			sourceUrl: settings().source_url,
+		});
+		const html = `<!doctype html>
+<html lang="en"${theme ? ` data-theme="${theme}"` : ""}>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="${theme ? TOKENS[theme].scheme : "light dark"}">
+<title>${esc(title)} · ${esc(name)}</title>
+<link rel="icon" type="image/png" href="/public/favicon.png">
+${head}
+<style>${fontFaces()}${CSS}${SHELL_CSS}${extra}${css}</style>
+</head>
+<body>
+${frame}
+</body>
+</html>`;
+		return pageResponse(html, { status, cache, referrer, cookies: nightModeCookies(look) });
+	}
 	const html = `<!doctype html>
 <html lang="en"${theme ? ` data-theme="${theme}"` : ""}>
 <head>
@@ -202,7 +228,6 @@ ${head}
 <body>
 <div class="col">
 <header class="bar"><a class="back" href="${esc(to.href)}" aria-label="${esc(to.label)}" title="${esc(to.label)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${ARROW}"/></svg></a><div class="heading"><div class="title">${esc(title)}</div><div class="sub">${esc(name)}</div></div></header>
-${tabs}
 <main>
 ${body}
 </main>
@@ -212,8 +237,16 @@ ${body}
 </html>`;
 	// never inside another site's frame: these pages hold one-click actions
 	// (authorizing an app, removing 2FA) a hidden frame could be clicked into
-	const headers = new Headers({ "content-type": "text/html; charset=utf-8", "cache-control": cache, "x-frame-options": "DENY", "content-security-policy": "frame-ancestors 'none'" });
-	if (referrer) headers.set("referrer-policy", referrer);
-	if (viewer) for (const c of nightModeCookies(look)) headers.append("set-cookie", c);
-	return new Response(html, { status, headers });
+	return pageResponse(html, { status, cache, referrer, cookies: viewer ? nightModeCookies(look) : [] });
+}
+
+function pageResponse(html: string, opts: { status: number; cache: string; referrer: string | null; cookies: string[] }): Response {
+	const headers = new Headers({ "content-type": "text/html; charset=utf-8", "cache-control": opts.cache, "x-frame-options": "DENY", "content-security-policy": "frame-ancestors 'none'" });
+	if (opts.referrer) headers.set("referrer-policy", opts.referrer);
+	for (const c of opts.cookies) headers.append("set-cookie", c);
+	return new Response(html, { status: opts.status, headers });
+}
+
+export function xitterHome(req: Request, viewer: Viewer): Promise<Response> {
+	return accountPage({ req, viewer, title: "Xitter", body: "" });
 }

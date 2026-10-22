@@ -9,7 +9,7 @@ import { type Feature, feature, settings } from "./settings";
 import type { Viewer } from "./auth";
 import { staffGate } from "./staff-access";
 import { superadminOf } from "./superadmins";
-import { publicMenuLinks, type MenuFacts, type MenuLink } from "./xitter-menu";
+import { publicMenuLinks, type ClientPayload, type MenuFacts, type MenuLink } from "./xitter-menu";
 
 export type { MenuLink };
 
@@ -95,7 +95,15 @@ export async function menuLinks(req: Request, viewer: Viewer): Promise<MenuLink[
 }
 
 // what the script needs to know, as window.__XITTER__.tidy
-export function tidyData(links: MenuLink[] = []) {
+const XITTER_ROW = {
+	href: "/account/xitter",
+	text: "Xitter",
+	description: "Theme, profile decor, apps, and the other things this instance adds.",
+	icon: "M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z",
+	viewBox: "0 0 24 24",
+};
+
+export function tidyData(links: MenuLink[] = [], staff?: ClientPayload["staff"]) {
 	const s = settings();
 	const menuItems = ["Embed post"];
 	if (!feature("lists")) menuItems.push("Add/remove from Lists");
@@ -113,6 +121,8 @@ export function tidyData(links: MenuLink[] = []) {
 		instance: s.instance_name,
 		source: s.source_url,
 		links,
+		xitter: XITTER_ROW,
+		...(staff ? { staff } : {}),
 	};
 }
 
@@ -145,6 +155,7 @@ export const FRESH_SCRIPT = `(function(){
 	};
 	var push=history.pushState;
 	history.pushState=function(s,t,u){
+		if(u&&ownedPath(u)){location.assign(String(u));return;}
 		if(stale&&u&&!/\\/(compose|i\\/flow|i\\/bookmarks\\/add)/.test(String(u))){
 			stale=false;
 			location.assign(u);
@@ -155,6 +166,14 @@ export const FRESH_SCRIPT = `(function(){
 	window.addEventListener("popstate",function(){
 		if(stale){stale=false;location.reload()}
 	});
+	function ownedPath(u){
+		var path="";
+		try{path=new URL(String(u),location.origin).pathname}catch(e){return false}
+		if(path==="/account"||path==="/account/switch"||path.indexOf("/account/not_my_account/")===0)return false;
+		if(path.indexOf("/account/")===0)return true;
+		if(path==="/admin"||path.indexOf("/admin/")===0)return true;
+		return path==="/federation/superadmin"||path.indexOf("/federation/superadmin/")===0;
+	}
 })();`;
 
 // The dialog's "Forgot password?" has no screen behind it here: it goes to our
@@ -247,20 +266,39 @@ export const TIDY_SCRIPT = `(function(){
 			row.parentNode.insertBefore(box,row);
 		});
 	}
-	function accountRows(){
-		var rows=(T.links||[]).filter(function(l){return l.where==="settings"||l.where==="both"});
-		var screen=document.querySelector('[data-testid="accountScreen"]');
-		if(!rows.length||!screen||screen.querySelector("[data-xitter-link]"))return;
-		var last=screen.querySelector('a[href="/settings/deactivate"]');
-		var all=screen.querySelectorAll('a[data-testid="pivot"]');
-		var row=(last||all[all.length-1]||{}).parentNode;
-		if(!row)return;
-		var next=last?row:row.nextSibling;
-		rows.forEach(function(l){
-			var box=row.cloneNode(true);
-			copy(box.querySelector("a"),l);
-			row.parentNode.insertBefore(box,next);
-		});
+	function xitterRow(){
+		var spec=T.xitter;
+		if(!spec||document.querySelector("a[data-xitter-settings]"))return;
+		var a=document.querySelector('a[href="/settings/account"]');
+		var row=a&&a.parentElement;
+		if(!row||!row.parentElement)return;
+		var box=row.cloneNode(true);
+		var link=box.querySelector("a");
+		if(!link)return;
+		copy(link,spec);
+		link.setAttribute("data-xitter-settings","");
+		row.parentElement.insertBefore(box,row.nextSibling);
+	}
+	function staffNav(){
+		var spec=T.staff&&T.staff.nav;
+		if(!spec)return;
+		var nav=document.querySelector('header[role="banner"] nav');
+		var home=nav&&nav.querySelector('a[href="/home"]');
+		if(!home||nav.querySelector('a[href="/admin"]'))return;
+		var item=home.parentElement&&home.parentElement!==nav?home.parentElement:home;
+		var box=item.cloneNode(true);
+		var link=box.querySelector("a")||box;
+		leave(link,spec.href);
+		link.removeAttribute("data-testid");
+		[].forEach.call(link.querySelectorAll("span"),function(n){if(!n.childElementCount&&n.textContent.trim()==="Home")n.textContent=spec.text});
+		if((link.getAttribute("aria-label")||"")==="Home")link.setAttribute("aria-label",spec.text);
+		var svg=link.querySelector("svg");
+		var path=svg&&svg.querySelector("path");
+		if(path){svg.setAttribute("viewBox","0 0 24 24");path.setAttribute("d","M12 1.5 3.5 5v6c0 5.2 3.6 10 8.5 11.5 4.9-1.5 8.5-6.3 8.5-11.5V5L12 1.5zm0 2.2 6.5 2.7V11c0 4.2-2.8 8.2-6.5 9.4-3.7-1.2-6.5-5.2-6.5-9.4V6.4L12 3.7z")}
+		var more=nav.querySelector('[data-testid="AppTabBar_More_Menu"]');
+		var before=more&&more.parentElement&&more.parentElement!==nav?more.parentElement:more;
+		if(before&&before.parentElement===item.parentElement)item.parentElement.insertBefore(box,before);
+		else item.parentElement.appendChild(box);
 	}
 	function twoFactorRow(){
 		var a=document.querySelector('a[href="/settings/account/login_verification"]');
@@ -328,7 +366,8 @@ export const TIDY_SCRIPT = `(function(){
 		ownScreens();
 		footer();
 		menuLinks();
-		accountRows();
+		xitterRow();
+		staffNav();
 		twoFactorRow();
 		navWidth();
 		announce();

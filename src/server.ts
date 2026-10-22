@@ -16,7 +16,9 @@ import { asRequest, markStaff, setRequestLanguage, staffGate } from "./staff-acc
 import { backupPath, startBackups } from "./backups";
 import { memberInvitesRoute } from "./member-invites";
 import { orgRoute } from "./org-manage";
-import { menuLinks } from "./tidy";
+import { loadMenuFacts } from "./tidy";
+import { clientPayload, type MenuFacts } from "./xitter-menu";
+import { xitterHome } from "./account-page";
 import { isPlayerPage, playerPage } from "./player-card";
 import { chatMediaRoute, chatSocket, juiceboxProxy, socketUser } from "./chat";
 import { loadBuild } from "./build";
@@ -437,6 +439,7 @@ async function route(req: Request): Promise<Response | undefined> {
 		return maintenancePage();
 	}
 	if (p === "/oauth/authorize") return oauthAuthorize(req, url, viewer);
+	if (p === "/account/xitter" && viewer) return xitterHome(req, viewer);
 	if (p === "/account/apps" && viewer) return connectedAppsRoute(req, viewer);
 	if (p === "/account/apps/developer" && viewer) return developerAppsRoute(req, viewer);
 	if (p === "/federation/superadmin" || p.startsWith("/federation/superadmin/")) return superadminHomeRoute(req, url, viewer);
@@ -508,18 +511,19 @@ async function route(req: Request): Promise<Response | undefined> {
 	// maintenance: guests see the notice; ?staff=1 is the sign-in page, for staff
 	if (!viewer && p === "/" && settings().operations.maintenance && !url.searchParams.has("staff")) return maintenancePage(true);
 	if (viewer && blocksClientShell(p)) return xitterNotFoundPage();
-	const [communityRows, flagRows, links] = viewer
+	const [communityRows, flagRows, facts] = viewer
 		? await Promise.all([
 			sql`select 1 from community_members where user_id = ${viewer.id}::bigint limit 1`,
 			sql`select education_flags, preferences from users where id = ${viewer.id}::bigint`,
-			menuLinks(req, viewer),
+			loadMenuFacts(req, viewer),
 		])
-		: [[], [], []];
+		: [[], [], null];
+	const menu = facts ? clientPayload(facts as MenuFacts) : { links: [], staff: undefined };
 	const prefs = readPrefs(flagRows[0]?.preferences);
 	const look = prefs.look;
 	const painted = look?.kind === "painted" ? look.theme : null;
 	const paint = viewer && painted ? await resolveBackground(viewer.id, painted) : undefined;
-	const page = shell(viewer ?? null, !!parseCookies(req).auth_multi, communityRows.length > 0, flagRows[0]?.education_flags ?? {}, links, look, prefs.accent, paint, viewer?.csrf);
+	const page = shell(viewer ?? null, !!parseCookies(req).auth_multi, communityRows.length > 0, flagRows[0]?.education_flags ?? {}, menu.links, look, prefs.accent, paint, viewer?.csrf, menu.staff);
 	const headers = new Headers({ "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "content-security-policy": PAGE_CSP });
 	// a guest token left from the signed-out page makes the signed-in client act
 	// as a guest (no csrf header, every write refused)
