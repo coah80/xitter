@@ -20,6 +20,6 @@ test("client apps stay admin-only on the same actions the panel lists", async ()
 	}
 	const html = await Bun.file(new URL("../src/admin.html", import.meta.url)).text();
 	expect(html).toContain('apps: { icon: "devices", title: "Client apps", needs: "platforms" }');
-	expect(html).toContain('can("createPlatform")');
-	expect(html).toContain('can("revokePlatform")');
+	expect(html).toContain('allow("createPlatform"');
+	expect(html).toContain('allow("revokePlatform"');
 });

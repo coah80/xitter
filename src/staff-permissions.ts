@@ -59,6 +59,11 @@ export const PERMISSIONS: Record<string, Permission> = {
 const PERMISSION_OF = new Map(Object.entries(PERMISSIONS).flatMap(([key, p]) => p.actions.map((a) => [a, key] as const)));
 export const permissionOf = (action: string) => PERMISSION_OF.get(action);
 
+export function actionNeed(action: string, needs: Role): string {
+	const key = permissionOf(action);
+	return key ? PERMISSIONS[key].label : `the ${needs} role`;
+}
+
 // the permissions each role has now: the defaults with the admin's choices over them
 export function rolePermissions(role: GrantableRole): Record<string, boolean> {
 	const chosen = settings().staff_permissions[role] ?? {};
