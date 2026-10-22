@@ -15,6 +15,12 @@ test("the admin panel is a searchable grouped list with a detail column", () => 
 	expect(html).toContain('id="back"');
 	expect(html).toContain('data-depth="0"');
 	expect(html).toContain("function allow(action, html)");
+	expect(html).toContain('allow("createBadge"');
+	expect(html).toContain('allow("deletePost"');
+	expect(html).toContain('allow("createInvite"');
+	expect(html).toContain('need("createStickerPack")');
+	expect(html).not.toContain('can("createBadge") ?');
+	expect(html).not.toContain('can("deletePost") ?');
 	expect(html).toContain('needs: "platforms"');
 	expect(html).toContain(".table, .table tbody { display: block;");
 	expect(html).toContain("overflow-wrap: anywhere");

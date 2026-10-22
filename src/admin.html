@@ -438,7 +438,7 @@ const RENDER = {
 				articles.map((a) => "<tr><td>" + esc(a.title || "Untitled") + ' <span class="dim small">· ' + (a.state === "Published" ? "published" : "draft") + "</span>" + (a.hidden ? ' <span class="pill suspended">hidden</span>' : "") +
 					'</td><td><a href="#user/' + esc(a.user_id) + '">@' + esc(a.screen_name) + '</a></td><td class="small dim">' + esc(when(a.modified_at)) + '</td><td class="row">' +
 					(a.post_id ? '<a class="btn" target="_blank" href="/' + esc(a.screen_name) + "/status/" + esc(a.post_id) + '">Open</a>' : "") +
-					(can("setArticleVisibility") ? '<button class="btn' + (a.hidden ? "" : " danger") + '" data-article="' + esc(a.id) + '" data-hidden="' + !a.hidden + '">' + (a.hidden ? "Show again" : "Hide") + "</button>" : "") +
+					allow("setArticleVisibility", '<button class="btn' + (a.hidden ? "" : " danger") + '" data-article="' + esc(a.id) + '" data-hidden="' + !a.hidden + '">' + (a.hidden ? "Show again" : "Hide") + "</button>") +
 					"</td></tr>").join("") + "</table>"
 			: '<div class="empty">No articles yet.</div>') + "</div>";
 		main.querySelectorAll("[data-article]").forEach((b) => b.onclick = () =>
@@ -476,22 +476,22 @@ const RENDER = {
 		const [{ badges }, { labels }] = await Promise.all([api("badges"), api("labels")]);
 		main.innerHTML = "<h1>Badges</h1>" +
 			'<p class="dim">A custom badge is a small image after an account\'s name, in the slot where X shows an organisation\'s badge. Give one to an account on its page. An organisation can also use one for its affiliates instead of its profile picture.</p>' +
-			(can("createBadge") ? '<div class="box" style="margin-bottom:16px"><h2>New badge</h2><div class="row"><input id="bn" placeholder="Name, shown on hover" maxlength="60" style="flex:1;min-width:180px">' +
+			allow("createBadge", '<div class="box" style="margin-bottom:16px"><h2>New badge</h2><div class="row"><input id="bn" placeholder="Name, shown on hover" maxlength="60" style="flex:1;min-width:180px">' +
 				'<label class="btn">Choose image<input type="file" id="bf" accept="image/png,image/jpeg,image/webp" hidden></label><span class="dim small" id="bfname">PNG, JPEG or WebP, square, up to 256 KB</span>' +
-				'<button class="btn primary" id="bc">Create</button></div></div>' : "") +
+				'<button class="btn primary" id="bc">Create</button></div></div>') +
 			'<div class="scroll">' + (badges.length
 				? '<table class="table"><tr><th></th><th>Name</th><th>Accounts</th><th>Made</th><th></th></tr>' +
 					badges.map((b) => '<tr><td style="width:44px"><img alt="" src="/public/badge-' + esc(b.id) + '.png" width="24" height="24" style="border-radius:4px;vertical-align:middle"></td><td>' + esc(b.name) + "</td><td>" + b.users +
-						'</td><td class="small dim">' + esc(when(b.created_at)) + "</td><td>" + (can("deleteBadge") ? '<button class="btn danger" data-del="' + esc(b.id) + '">Delete</button>' : "") + "</td></tr>").join("") + "</table>"
+						'</td><td class="small dim">' + esc(when(b.created_at)) + "</td><td>" + allow("deleteBadge", '<button class="btn danger" data-del="' + esc(b.id) + '">Delete</button>') + "</td></tr>").join("") + "</table>"
 				: '<div class="empty">No custom badges yet.</div>') + "</div>" +
 			'<h1 style="margin-top:32px">Profile labels</h1><p class="dim">Text under an account\'s name, where X shows "Parody account", with a badge as its icon (the parody mask without one). Give one to an account on its page; it replaces a parody, commentary or fan label, and the account can\'t change it.</p>' +
-			(can("createLabel") ? '<div class="box" style="margin-bottom:16px"><h2>New label</h2><div class="row"><input id="ln" placeholder="Text, e.g. State-affiliated media" maxlength="40" style="flex:1;min-width:180px">' +
+			allow("createLabel", '<div class="box" style="margin-bottom:16px"><h2>New label</h2><div class="row"><input id="ln" placeholder="Text, e.g. State-affiliated media" maxlength="40" style="flex:1;min-width:180px">' +
 				'<select id="lb"><option value="">parody mask</option>' + badges.map((b) => '<option value="' + esc(b.id) + '">' + esc(b.name) + "</option>").join("") + "</select>" +
-				'<input id="lu" placeholder="Link (optional)" maxlength="500" style="flex:1;min-width:160px"><button class="btn primary" id="lc">Create</button></div></div>' : "") +
+				'<input id="lu" placeholder="Link (optional)" maxlength="500" style="flex:1;min-width:160px"><button class="btn primary" id="lc">Create</button></div></div>') +
 			'<div class="scroll">' + (labels.length
 				? '<table class="table"><tr><th></th><th>Text</th><th>Link</th><th>Accounts</th><th></th></tr>' +
 					labels.map((l) => '<tr><td style="width:44px">' + (l.badge_id ? '<img alt="" src="/public/badge-' + esc(l.badge_id) + '.png" width="20" height="20" style="border-radius:3px;vertical-align:middle">' : '<span class="icon">theater_comedy</span>') + "</td><td>" + esc(l.text) +
-						'</td><td class="small dim">' + esc(l.url || "") + "</td><td>" + l.users + "</td><td>" + (can("deleteLabel") ? '<button class="btn danger" data-dellabel="' + esc(l.id) + '">Delete</button>' : "") + "</td></tr>").join("") + "</table>"
+						'</td><td class="small dim">' + esc(l.url || "") + "</td><td>" + l.users + "</td><td>" + allow("deleteLabel", '<button class="btn danger" data-dellabel="' + esc(l.id) + '">Delete</button>') + "</td></tr>").join("") + "</table>"
 				: '<div class="empty">No profile labels yet.</div>') + "</div>";
 		if ($("#lc")) $("#lc").onclick = () => act(() => api("createLabel", { text: $("#ln").value, badgeId: $("#lb").value, url: $("#lu").value }), "Label created").then(route);
 		main.querySelectorAll("[data-dellabel]").forEach((b) => b.onclick = async () => {
@@ -515,18 +515,19 @@ const RENDER = {
 	async stickers(main) {
 		const { packs } = await api("stickers");
 		const admin = can("createStickerPack");
+		const sticker = (html) => admin ? html : need("createStickerPack");
 		main.innerHTML = "<h1>Stickers</h1>" +
 			'<p class="dim">Packs show in the sticker button beside the composer\'s emoji button. A sticker is posted as an image, so it shows anywhere images do. PNG, GIF or WebP, up to 1024×1024 and 1 MB; transparency is kept.</p>' +
-			(admin ? '<div class="box" style="margin-bottom:16px"><h2>New pack</h2><div class="row"><input id="pn" placeholder="Pack name" maxlength="40" style="flex:1;min-width:180px"><button class="btn primary" id="pc">Create</button></div></div>' : "") +
+			sticker('<div class="box" style="margin-bottom:16px"><h2>New pack</h2><div class="row"><input id="pn" placeholder="Pack name" maxlength="40" style="flex:1;min-width:180px"><button class="btn primary" id="pc">Create</button></div></div>') +
 			(packs.length ? packs.map((p, i) => '<div class="box" style="margin-bottom:16px" data-pack="' + esc(p.id) + '">' +
 				'<div class="row" style="justify-content:space-between"><h2 style="margin:0">' + esc(p.name) + ' <span class="dim small">' + p.stickers.length + " sticker" + (p.stickers.length === 1 ? "" : "s") + "</span></h2>" +
-				(admin ? '<div class="row"><button class="btn" data-up' + (i ? "" : " disabled") + '><span class="icon">arrow_upward</span></button><button class="btn" data-down' + (i < packs.length - 1 ? "" : " disabled") + '><span class="icon">arrow_downward</span></button><button class="btn" data-rename>Rename</button><button class="btn danger" data-delpack>Delete pack</button></div>' : "") + "</div>" +
+				sticker('<div class="row"><button class="btn" data-up' + (i ? "" : " disabled") + '><span class="icon">arrow_upward</span></button><button class="btn" data-down' + (i < packs.length - 1 ? "" : " disabled") + '><span class="icon">arrow_downward</span></button><button class="btn" data-rename>Rename</button><button class="btn danger" data-delpack>Delete pack</button></div>') + "</div>" +
 				'<div class="row" style="flex-wrap:wrap;gap:8px;margin:12px 0">' + (p.stickers.length ? p.stickers.map((s) =>
 					'<div style="position:relative;width:88px;text-align:center"><img alt="" src="' + esc(s.url) + '" style="width:80px;height:80px;object-fit:contain;border-radius:6px;background:repeating-conic-gradient(#8882 0 25%,transparent 0 50%) 0 0/12px 12px">' +
 					'<div class="small dim" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(s.name || "") + "</div>" +
-					(admin ? '<button class="btn danger small" data-delsticker="' + esc(s.id) + '" title="Delete" style="position:absolute;top:0;right:0;padding:0 4px"><span class="icon">close</span></button>' : "") + "</div>").join("")
+					sticker('<button class="btn danger small" data-delsticker="' + esc(s.id) + '" title="Delete" style="position:absolute;top:0;right:0;padding:0 4px"><span class="icon">close</span></button>') + "</div>").join("")
 					: '<div class="empty" style="width:100%">No stickers in this pack yet.</div>') + "</div>" +
-				(admin ? '<div class="row"><input data-sname placeholder="Sticker name (optional)" maxlength="40" style="flex:1;min-width:160px"><label class="btn">Choose images<input type="file" data-sfile accept="image/png,image/gif,image/webp" multiple hidden></label><span class="dim small" data-sfname></span><button class="btn primary" data-add>Add</button></div>' : "") +
+				sticker('<div class="row"><input data-sname placeholder="Sticker name (optional)" maxlength="40" style="flex:1;min-width:160px"><label class="btn">Choose images<input type="file" data-sfile accept="image/png,image/gif,image/webp" multiple hidden></label><span class="dim small" data-sfname></span><button class="btn primary" data-add>Add</button></div>') +
 				"</div>").join("") : '<div class="empty">No sticker packs yet.</div>');
 		const read = (file) => new Promise((ok, fail) => { const r = new FileReader(); r.onload = () => ok(r.result.split(",")[1]); r.onerror = () => fail(new Error("Couldn't read " + file.name + ".")); r.readAsDataURL(file); });
 		if ($("#pc")) $("#pc").onclick = () => act(() => api("createStickerPack", { name: $("#pn").value }), "Pack created").then(route);
@@ -565,25 +566,26 @@ const RENDER = {
 	async hashflags(main) {
 		const { hashflags } = await api("hashflags");
 		const admin = can("createHashflag");
+		const hashflag = (html) => admin ? html : need("createHashflag");
 		const local = (d) => { const x = new Date(d); x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0, 16); };
 		const now = Date.now();
 		const state = (h) => new Date(h.ends_at) <= now ? "ended" : new Date(h.starts_at) > now ? "upcoming" : "running";
 		main.innerHTML = "<h1>Branded hashtags</h1>" +
 			'<p class="dim">X\'s branded likes and hashmoji. While one runs, liking a post that has its hashtag plays the like animation instead of the heart, and the hashtag shows its emoji. The animation is a Lottie JSON file (After Effects with Bodymovin, or LottieFiles), square, like X\'s own heart. With hashfetti on, the emoji rains over the hashtag\'s search results. People see a change after they reload.</p>' +
-			(admin ? '<div class="box" style="margin-bottom:16px"><h2>New branded hashtag</h2>' +
+			hashflag('<div class="box" style="margin-bottom:16px"><h2>New branded hashtag</h2>' +
 				'<div class="field"><label>Hashtag</label><input id="hh" placeholder="#SuperMarioMovie" maxlength="101"></div>' +
 				'<div class="row"><div class="field" style="flex:1"><label>Starts</label><input id="hs" type="datetime-local" value="' + local(now) + '"></div><div class="field" style="flex:1"><label>Ends</label><input id="he" type="datetime-local" value="' + local(now + 7 * 864e5) + '"></div></div>' +
 				'<div class="row"><label class="btn">Like animation (.json)<input type="file" id="ha" accept="application/json,.json" hidden></label><span class="dim small" id="han">Lottie JSON, up to 1 MB</span></div>' +
 				'<div class="row" style="margin-top:8px"><label class="btn">Emoji<input type="file" id="hm" accept="image/png,image/gif,image/webp" hidden></label><span class="dim small" id="hmn">PNG, GIF or WebP, up to 512×512 and 256 KB</span></div>' +
 				'<label class="row" style="margin:12px 0"><input type="checkbox" id="hf"> Hashfetti (needs an emoji)</label>' +
-				'<button class="btn primary" id="hc">Create</button></div>' : "") +
+				'<button class="btn primary" id="hc">Create</button></div>') +
 			'<div class="scroll">' + (hashflags.length
 				? '<table class="table"><tr><th>Hashtag</th><th>Like</th><th>Emoji</th><th>When</th><th>State</th><th></th></tr>' +
 					hashflags.map((h) => '<tr><td>#' + esc(h.hashtag) + (h.hashfetti ? ' <span class="dim small">hashfetti</span>' : "") + "</td><td>" +
 						(h.like_url ? '<a href="' + esc(h.like_url) + '" target="_blank">animation</a>' : '<span class="dim">—</span>') + "</td><td>" +
 						(h.emoji_url ? '<img alt="" src="' + esc(h.emoji_url) + '" width="20" height="20" style="vertical-align:middle">' : '<span class="dim">—</span>') +
 						'</td><td class="small">' + esc(when(h.starts_at)) + " → " + esc(when(h.ends_at)) + '</td><td><span class="pill' + (state(h) === "ended" ? " suspended" : "") + '">' + state(h) + "</span></td><td>" +
-						(admin ? (state(h) !== "ended" ? '<button class="btn" data-end="' + esc(h.id) + '">End now</button> ' : "") + '<button class="btn danger" data-del="' + esc(h.id) + '">Delete</button>' : "") + "</td></tr>").join("") + "</table>"
+						hashflag((state(h) !== "ended" ? '<button class="btn" data-end="' + esc(h.id) + '">End now</button> ' : "") + '<button class="btn danger" data-del="' + esc(h.id) + '">Delete</button>') + "</td></tr>").join("") + "</table>"
 				: '<div class="empty">No branded hashtags yet.</div>') + "</div>";
 		const read = (file) => new Promise((ok, fail) => { const r = new FileReader(); r.onload = () => ok(r.result.split(",")[1]); r.onerror = () => fail(new Error("Couldn't read " + file.name + ".")); r.readAsDataURL(file); });
 		if ($("#ha")) $("#ha").onchange = () => $("#han").textContent = $("#ha").files[0]?.name || "";
@@ -710,7 +712,7 @@ const RENDER = {
 		};
 		main.innerHTML = "<h1>Explore cards</h1>" +
 			'<p class="dim">News and sports cards at the top of Explore. Each opens a search. The first news card with a picture is shown large. Sports cards show a scoreboard; update the score here as the game goes.</p>' +
-			(can("saveCard") ? '<div class="box" style="margin-bottom:16px" id="cnew"><h2>New card</h2>' + form() + '<div class="row" style="margin-top:8px"><button class="btn primary" id="cc">Create</button></div></div>' : "") +
+			allow("saveCard", '<div class="box" style="margin-bottom:16px" id="cnew"><h2>New card</h2>' + form() + '<div class="row" style="margin-top:8px"><button class="btn primary" id="cc">Create</button></div></div>') +
 			(cards.length ? cards.map((c) => '<div class="box" style="margin-bottom:12px" data-card="' + esc(c.id) + '"><div class="row" style="justify-content:space-between"><div><b>' + esc(c.title) + '</b> <span class="dim small">· ' + esc(c.kind) +
 				(c.kind === "sports" ? " · " + esc(c.home) + " " + esc(c.home_score || "–") + " : " + esc(c.away_score || "–") + " " + esc(c.away) : "") + (c.hidden ? " · hidden" : "") + "</span></div>" +
 				(allow("saveCard", '<div><button class="btn" data-edit>Edit</button> <button class="btn danger" data-del>Delete</button></div>')) + "</div></div>").join("")
@@ -738,11 +740,11 @@ const RENDER = {
 		const read = (box) => Object.fromEntries([...box.querySelectorAll("[data-f]")].map((i) => [i.dataset.f, i.value]));
 		main.innerHTML = "<h1>Topics</h1>" +
 			'<p class="dim">People follow topics from "Topics to follow" in the side bar and from a post\'s menu. A post matches a topic when it has one of its keywords (with or without #). "For you" lifts posts on followed topics and labels the ones from accounts people don\'t follow; "Not interested" keeps them out.</p>' +
-			(can("saveTopic") ? '<div class="box" style="margin-bottom:16px" id="tnew"><h2>New topic</h2>' + form() + '<div class="row" style="margin-top:8px"><button class="btn primary" id="tc">Create</button></div></div>' : "") +
+			allow("saveTopic", '<div class="box" style="margin-bottom:16px" id="tnew"><h2>New topic</h2>' + form() + '<div class="row" style="margin-top:8px"><button class="btn primary" id="tc">Create</button></div></div>') +
 			'<div class="scroll">' + (topics.length
 				? '<table class="table"><tr><th>Topic</th><th>Keywords</th><th>Followers</th><th></th></tr>' +
 					topics.map((t) => '<tr data-topic="' + esc(t.id) + '"><td><b>' + esc(t.name) + '</b><div class="small dim">' + esc(t.description) + "</div></td><td class=\"small\">" + esc(t.keywords.join(", ")) + "</td><td>" + t.followers +
-						"</td><td>" + (can("saveTopic") ? '<button class="btn" data-edit="' + esc(t.id) + '">Edit</button> <button class="btn danger" data-del="' + esc(t.id) + '">Delete</button>' : "") + "</td></tr>").join("") + "</table>"
+						"</td><td>" + allow("saveTopic", '<button class="btn" data-edit="' + esc(t.id) + '">Edit</button> <button class="btn danger" data-del="' + esc(t.id) + '">Delete</button>') + "</td></tr>").join("") + "</table>"
 				: '<div class="empty">No topics yet.</div>') + "</div>";
 		if ($("#tc")) $("#tc").onclick = () => act(() => api("saveTopic", read($("#tnew"))), "Topic created").then(route);
 		main.querySelectorAll("[data-edit]").forEach((b) => b.onclick = () => {
@@ -794,8 +796,8 @@ const RENDER = {
 						(x.blocked_at ? '<div class="dim small">Blocked ' + esc(when(x.blocked_at)) + (x.blocked_reason ? ": " + esc(x.blocked_reason) : "") + "</div>" : "") +
 						"</td><td>" + esc(String(x.grants)) + "</td><td>" + state(x) + "</td><td>" +
 						(x.blocked_at
-							? (can("unblockOAuthApp") ? '<button class="btn" data-unblock="' + esc(x.id) + '">Unblock</button>' : "")
-							: !x.revoked && can("blockOAuthApp") ? '<button class="btn danger" data-block="' + esc(x.id) + '">Block</button>' : "") +
+							? allow("unblockOAuthApp", '<button class="btn" data-unblock="' + esc(x.id) + '">Unblock</button>')
+							: !x.revoked ? allow("blockOAuthApp", '<button class="btn danger" data-block="' + esc(x.id) + '">Block</button>') : "") +
 						"</td></tr>").join("") + "</table>"
 				: '<div class="empty">No OAuth apps yet.</div>') + "</div>";
 		const block = async (body, name) => {
@@ -836,12 +838,12 @@ const RENDER = {
 								? (i.block.source === "registry" || (i.block.source === "emergency" && !f.superadmin) ? "" : '<button class="btn" data-unblock="' + esc(i.id) + '">Federate again</button> ') + '<button class="btn danger" data-purge="' + esc(i.id) + '">Delete its content</button>'
 								: '<button class="btn" data-pull="' + esc(i.id) + '">Sync now</button> <button class="btn danger" data-block="' + esc(i.id) + '">Defederate</button>') +
 								(i.key_change ? ' <button class="btn" data-key="' + esc(i.id) + '">Accept the new key</button>' : "")
-							: "") + "</td></tr>").join("") + "</table>"
+							: need("admin")) + "</td></tr>").join("") + "</table>"
 				: '<div class="empty">No other instances yet.</div>') + "</div>" +
 			'<div class="box" style="margin-top:16px"><h2>Media from other instances</h2><p class="dim small">' +
 				(f.media.stored ? "Saved on this server (FEDERATION_MEDIA=store)." : "Shown straight from their home instance and not saved here.") +
 				" Saved now: " + esc(String(f.media.files)) + " files, " + esc((f.media.bytes / 1048576).toFixed(1)) + " MB.</p>" +
-				(can("admin") && f.media.bytes > 0 ? '<button class="btn danger" id="dropmedia">Delete saved media</button>' : "") + "</div>" +
+				(f.media.bytes > 0 ? allow("admin", '<button class="btn danger" id="dropmedia">Delete saved media</button>') : "") + "</div>" +
 			(allow("admin", '<div class="box" style="margin-top:16px"><h2>Defederate an instance</h2><div class="row"><input id="fbi" placeholder="xit.example.org" style="flex:1;min-width:180px"><input id="fbr" placeholder="Reason" maxlength="500" style="flex:2;min-width:200px"><button class="btn danger" id="fbgo">Defederate</button></div></div>'));
 		const block = async (instance, reason) => {
 			if (!(await ask("Defederate " + instance + "? Its accounts and posts disappear here and nothing more comes from it until you federate again."))) return;
@@ -880,11 +882,12 @@ const RENDER = {
 					'<div style="margin:10px 0">' + target + (r.actioned_before ? '<div class="dim small" style="margin-top:4px">' + r.actioned_before + " earlier reports were acted on</div>" : "") + "</div>" +
 					(r.post_id ? (r.post_text !== null ? '<div class="box" style="background:var(--bg);border:1px solid var(--line)">' + esc(r.post_text || "(no text)") + (r.post_media ? ' <span class="dim small">· ' + r.post_media + " media</span>" : "") +
 						' <a class="small" target="_blank" href="/' + esc(r.screen_name) + "/status/" + esc(r.post_id) + '">open</a></div>' : '<p class="dim small">The post was deleted.</p>') : '<p class="dim small">Report about the account.</p>') +
-					(status === "open" && can("resolveReport") ? '<div class="field" style="margin-top:12px"><input data-note placeholder="Note for the audit log (optional)"></div><div class="row">' +
-						'<button class="btn" data-do="dismiss">Dismiss</button>' +
-						(r.post_id && r.post_text !== null ? allow("deletePost", '<button class="btn danger" data-do="delete">Delete post</button>') : "") +
-						(r.user_id ? allow("setStatus", '<button class="btn" data-do="restricted">Restrict author</button><button class="btn" data-do="limited">Limit author</button><button class="btn danger" data-do="suspended">Suspend author</button>') : "") +
-						(r.user_id ? '<a class="btn" href="#user/' + esc(r.user_id) + '">Open account</a>' : "") + "</div>"
+					(status === "open"
+						? allow("resolveReport", '<div class="field" style="margin-top:12px"><input data-note placeholder="Note for the audit log (optional)"></div><div class="row">' +
+							'<button class="btn" data-do="dismiss">Dismiss</button>' +
+							(r.post_id && r.post_text !== null ? allow("deletePost", '<button class="btn danger" data-do="delete">Delete post</button>') : "") +
+							(r.user_id ? allow("setStatus", '<button class="btn" data-do="restricted">Restrict author</button><button class="btn" data-do="limited">Limit author</button><button class="btn danger" data-do="suspended">Suspend author</button>') : "") +
+							(r.user_id ? '<a class="btn" href="#user/' + esc(r.user_id) + '">Open account</a>' : "") + "</div>")
 						: '<p class="dim small">' + esc(r.status) + (r.handled_by ? " by @" + esc(r.handled_by) : "") + (r.handled_at ? " · " + esc(when(r.handled_at)) : "") + (r.note ? " · " + esc(r.note) : "") + "</p>") +
 					"</div>";
 			}).join("") : '<div class="empty">' + (status === "open" ? "No open reports." : "Nothing here.") + "</div>");
@@ -909,8 +912,8 @@ const RENDER = {
 			'<select id="status"><option value="">Any standing</option><option>active</option><option>restricted</option><option>limited</option><option>suspended</option></select>' +
 			HOME_SELECT +
 			'<label class="row small"><input type="checkbox" id="staff"> Staff only</label></div>' +
-			(can("bulkStatus") ? '<div class="bar" id="bulk" hidden><span class="small" id="picked"></span>' +
-				[["active", "Reinstate", ""], ["restricted", "Restrict", ""], ["limited", "Limit", ""], ["suspended", "Suspend", " danger"]].map(([s, l, c]) => '<button class="btn' + c + '" data-bulk="' + s + '">' + l + "</button>").join("") + "</div>" : "") +
+			allow("bulkStatus", '<div class="bar" id="bulk" hidden><span class="small" id="picked"></span>' +
+				[["active", "Reinstate", ""], ["restricted", "Restrict", ""], ["limited", "Limit", ""], ["suspended", "Suspend", " danger"]].map(([s, l, c]) => '<button class="btn' + c + '" data-bulk="' + s + '">' + l + "</button>").join("") + "</div>") +
 			'<p class="dim small" id="total"></p><div id="list" class="scroll"></div>' +
 			'<div class="row" style="margin-top:16px"><button class="btn" id="more" hidden>Show more</button></div>';
 		const picked = () => [...main.querySelectorAll("[data-pick]:checked")].map((c) => c.dataset.pick);
@@ -971,14 +974,14 @@ const RENDER = {
 		// the label and shown counts of one post, opened by its Edit button
 		const postEditor = (p) => {
 			const n = p.notice || {}, c = p.count_overrides || {};
-			return '<div class="grid2">' + (can("setPostNotice") ? '<div><b>Label under the post</b><div class="field"><select data-k="type">' +
+			return '<div class="grid2">' + allow("setPostNotice", '<div><b>Label under the post</b><div class="field"><select data-k="type">' +
 				[["", "none"]].concat(Object.entries(NOTICE_LABELS)).map(([k, l]) => '<option value="' + k + '"' + ((n.type || "") === k ? " selected" : "") + ">" + esc(l) + "</option>").join("") +
 				'</select></div><div class="field"><input data-k="text" maxlength="280" placeholder="Text (blank: the usual one for the label)" value="' + esc(n.text || "") + '"></div>' +
 				'<div class="field"><input data-k="url" placeholder="Learn more link (blank: the rules page)" value="' + esc(n.url || "") + '"></div>' +
-				'<p class="dim small">Visibility limited also keeps the post out of For you and search.</p><button class="btn primary" data-save-notice>Save label</button></div>' : "") +
-				(can("setPostCounts") ? '<div><b>Shown counts</b><p class="dim small">Blank shows the real number. Only the number changes, not who liked or reposted.</p><div class="row" style="flex-wrap:wrap">' +
+				'<p class="dim small">Visibility limited also keeps the post out of For you and search.</p><button class="btn primary" data-save-notice>Save label</button></div>') +
+				allow("setPostCounts", '<div><b>Shown counts</b><p class="dim small">Blank shows the real number. Only the number changes, not who liked or reposted.</p><div class="row" style="flex-wrap:wrap">' +
 					["likes", "replies", "reposts", "quotes", "bookmarks", "views"].map((k) => '<label class="small" style="width:30%">' + k + '<input data-k="' + k + '" type="number" min="0" value="' + (c[k] ?? "") + '"></label>').join("") +
-					'</div><button class="btn primary" data-save-counts style="margin-top:8px">Save counts</button></div>' : "") + "</div>";
+					'</div><button class="btn primary" data-save-counts style="margin-top:8px">Save counts</button></div>') + "</div>";
 		};
 		main.innerHTML = '<h1>Posts</h1><div class="bar"><input id="q" placeholder="Text contains" style="flex:1;min-width:160px"><input id="author" placeholder="@author"></div><p class="dim small" id="total"></p><div id="list" class="scroll"></div>' +
 			'<div class="row" style="margin-top:16px"><button class="btn" id="more" hidden>Show more</button></div>';
@@ -999,10 +1002,10 @@ const RENDER = {
 						(p.notice ? ' <span class="pill restricted">' + esc(NOTICE_LABELS[p.notice.type] || p.notice.type) + "</span>" : "") + (p.count_overrides ? ' <span class="pill">counts set</span>' : "") +
 						'<div class="dim small">' + p.likes + ' likes · <a href="/' + esc(p.screen_name) + "/status/" + esc(p.id) + '" target="_blank">open</a></div></td><td><a href="#user/' + esc(p.user_id) + '">@' + esc(p.screen_name) + '</a></td><td class="small dim">' + esc(when(p.created_at)) + "</td><td>" +
 						'<div class="row" style="flex-wrap:nowrap">' +
-							(can("setPostVisibility") ? '<button class="btn" data-vis="' + esc(p.id) + '" data-hidden="' + !p.hidden + '" data-sensitive="' + !!p.sensitive + '" title="Hidden posts are seen by staff only">' + (p.hidden ? "Show" : "Hide") + "</button>" +
-								'<button class="btn" data-vis="' + esc(p.id) + '" data-hidden="' + !!p.hidden + '" data-sensitive="' + !p.sensitive + '" title="Media behind a content warning">' + (p.sensitive ? "Not sensitive" : "Sensitive") + "</button>" : "") +
-							(can("setPostNotice") || can("setPostCounts") ? '<button class="btn" data-edit="' + esc(p.id) + '">Edit</button>' : "") +
-							(can("deletePost") ? '<button class="btn danger" data-del="' + esc(p.id) + '">Delete</button>' : "") + "</div></td></tr>" +
+							allow("setPostVisibility", '<button class="btn" data-vis="' + esc(p.id) + '" data-hidden="' + !p.hidden + '" data-sensitive="' + !!p.sensitive + '" title="Hidden posts are seen by staff only">' + (p.hidden ? "Show" : "Hide") + "</button>" +
+								'<button class="btn" data-vis="' + esc(p.id) + '" data-hidden="' + !!p.hidden + '" data-sensitive="' + !p.sensitive + '" title="Media behind a content warning">' + (p.sensitive ? "Not sensitive" : "Sensitive") + "</button>") +
+							(can("setPostNotice") || can("setPostCounts") ? '<button class="btn" data-edit="' + esc(p.id) + '">Edit</button>' : need("setPostNotice")) +
+							allow("deletePost", '<button class="btn danger" data-del="' + esc(p.id) + '">Delete</button>') + "</div></td></tr>" +
 						'<tr data-editor="' + esc(p.id) + '" hidden><td colspan="4">' + postEditor(p) + "</td></tr>").join("") + "</table>"
 				: '<div class="empty">No posts match.</div>';
 			$("#list").querySelectorAll("[data-edit]").forEach((b) => b.onclick = () => {
@@ -1052,17 +1055,17 @@ const RENDER = {
 				'<label class="small dim">Uses each <input id="qu" type="number" min="1" max="100" style="width:70px" value="' + q.uses + '"></label>' +
 				'<label class="small dim">From account age (days) <input id="qa" type="number" min="0" max="3650" style="width:80px" value="' + q.min_age_days + '"></label>' +
 				(allow("admin", '<button class="btn" id="qsave">Save</button>')) + "</div></div>" +
-			(can("createInvite") ? '<div class="box" style="margin-bottom:16px"><h2>Make invites</h2><div class="row">' +
+			allow("createInvite", '<div class="box" style="margin-bottom:16px"><h2>Make invites</h2><div class="row">' +
 				'<label class="small dim">How many <input id="n" type="number" min="1" max="50" value="1" style="width:70px"></label>' +
 				'<label class="small dim">Uses each <input id="u" type="number" min="1" value="1" style="width:80px"></label>' +
 				'<label class="small dim">Expires in days <input id="d" type="number" min="0" placeholder="never" style="width:90px"></label>' +
 				'<label class="small dim">Joins organisation <select id="o"><option value="">none</option>' + orgs.map((o) => '<option value="' + esc(o.id) + '">@' + esc(o.screen_name) + "</option>").join("") + "</select></label>" +
-				'<button class="btn primary" id="make">Make</button></div><div id="made"></div></div>' : "") +
+				'<button class="btn primary" id="make">Make</button></div><div id="made"></div></div>') +
 			'<div class="scroll"><table class="table"><tr><th>Code</th><th>State</th><th>Used</th><th>By</th><th>Made</th><th></th></tr>' +
 			invites.map((i) => '<tr><td class="code">' + (i.code ? esc(i.code) : '<span class="dim">hidden</span>') + (i.org ? ' <span class="dim small">→ @' + esc(i.org) + "</span>" : "") + "</td><td>" + esc(state(i)) + "</td><td>" + i.uses + "/" + i.max_uses +
 				(i.used_by.length ? '<div class="dim small">' + i.used_by.map((n) => "@" + esc(n)).join(", ") + "</div>" : "") + '</td><td class="small">' + (i.created_by ? "@" + esc(i.created_by) : '<span class="dim">script</span>') +
 				'</td><td class="small dim">' + esc(when(i.created_at)) + (i.expires_at ? "<br>until " + esc(when(i.expires_at)) : "") + "</td><td>" +
-				(state(i) === "open" && i.code ? '<button class="btn" data-copy="' + esc(i.code) + '">Copy link</button>' + (can("revokeInvite") ? ' <button class="btn danger" data-revoke="' + esc(i.code) + '">Revoke</button>' : "") : "") + "</td></tr>").join("") +
+				(state(i) === "open" && i.code ? '<button class="btn" data-copy="' + esc(i.code) + '">Copy link</button>' + allow("revokeInvite", ' <button class="btn danger" data-revoke="' + esc(i.code) + '">Revoke</button>') : "") + "</td></tr>").join("") +
 			"</table></div>";
 		bindTabs();
 		if ($("#qsave")) $("#qsave").onclick = () => act(() => api("saveInviteQuota", { enabled: $("#qon").checked, per_month: Number($("#qn").value), uses: Number($("#qu").value), min_age_days: Number($("#qa").value) }), "Saved").then(route);
@@ -1085,59 +1088,59 @@ const RENDER = {
 			'<div class="box"><h2>Sign-up</h2>' +
 			Object.entries(modes).map(([k, v]) => '<label class="row" style="margin:6px 0"><input type="radio" name="mode" value="' + k + '"' + (s.signup_mode === k ? " checked" : "") + dis + "> " + esc(v) + "</label>").join("") +
 			'<div class="field" style="margin-top:12px"><label>New accounts follow (handles, comma separated)</label><input id="follows" value="' + esc(s.default_follows.map((h) => "@" + h).join(", ")) + '"' + dis + "></div>" +
-			(admin ? '<button class="btn primary" id="saveFollows">Save</button>' : "") + "</div>" +
+			(admin ? '<button class="btn primary" id="saveFollows">Save</button>' : need("admin")) + "</div>" +
 			'<div class="box"><h2>Name and source</h2><div class="field"><label>Instance name (page titles, text in the app, sign-in page, mail)</label><input id="name" maxlength="30" value="' + esc(s.instance_name) + '"' + dis + "></div>" +
 			'<div class="field"><label>Source code link (AGPL-3.0: shown on the sign-in pages)</label><input id="source" value="' + esc(s.source_url) + '"' + dis + "></div>" +
-			(admin ? '<button class="btn primary" id="saveName">Save</button>' : "") + "</div>" +
+			(admin ? '<button class="btn primary" id="saveName">Save</button>' : need("admin")) + "</div>" +
 			'<div class="box"><h2>Features</h2><p class="dim small">Switched-off features disappear from everyone\'s menus and composer.</p>' +
 			Object.entries(features).map(([k, label]) => '<label class="row" style="margin:6px 0"><input type="checkbox" data-feature="' + k + '"' + (s.features[k] ? " checked" : "") + dis + "> " + esc(label) + "</label>").join("") +
-			(admin ? '<button class="btn primary" id="saveFeatures" style="margin-top:8px">Save</button>' : "") + "</div>" +
+			(admin ? '<button class="btn primary" id="saveFeatures" style="margin-top:8px">Save</button>' : need("admin")) + "</div>" +
 			'<div class="box"><h2>Upload limits</h2>' +
 			[["image_mb", "Image size, MB"], ["video_mb", "Video size, MB"], ["video_seconds", "Video length, seconds"]]
 				.map(([k, l]) => '<div class="field"><label>' + l + '</label><input type="number" data-limit="' + k + '" value="' + esc(s.limits[k]) + '"' + dis + "></div>").join("") +
-			(admin ? '<button class="btn primary" id="saveLimits">Save</button>' : "") + "</div>" +
+			(admin ? '<button class="btn primary" id="saveLimits">Save</button>' : need("admin")) + "</div>" +
 			'<div class="box"><h2>Rate limits</h2><p class="dim small">Requests per account per 15 minutes. Staff have no limits. Hitting one shows the app\'s "try again later" and a line in the server log.</p>' +
 			[["read", "Any request (a page load is about 30)"], ["endpoint", "Any one kind of request (a stuck page loses only that)"], ["write", "Other changes (settings, deletes, lists…)"], ["post", "Posts and replies"], ["engage", "Likes, reposts, bookmarks, follows"], ["dm", "Messages sent"], ["upload", "Files uploaded"]]
 				.map(([k, l]) => '<div class="field"><label>' + l + '</label><input type="number" min="1" data-rate="' + k + '" value="' + esc(s.rate_limits[k]) + '"' + dis + "></div>").join("") +
-			(admin ? '<button class="btn primary" id="saveRates">Save</button>' : "") + "</div>" +
+			(admin ? '<button class="btn primary" id="saveRates">Save</button>' : need("admin")) + "</div>" +
 			'<div class="box"><h2>Post length</h2><p class="dim small">The longest post each badge may write, counted like X counts (links 23, Chinese, Japanese, Korean and emoji 2). Past 280 a post shows a preview with "Show more". Changes reach the composer on its next page load.</p>' +
 			[["none", "No badge"], ["blue", "Blue check"], ["business", "Gold check (organisations)"], ["government", "Grey check (government organisations and officials)"]]
 				.map(([k, l]) => '<div class="field"><label>' + l + '</label><input type="number" min="1" data-postlen="' + k + '" value="' + esc(s.post_limits[k]) + '"' + dis + "></div>").join("") +
-			(admin ? '<button class="btn primary" id="savePostLen">Save</button>' : "") + "</div>" +
+			(admin ? '<button class="btn primary" id="savePostLen">Save</button>' : need("admin")) + "</div>" +
 			'<div class="box"><h2>Daily caps</h2><p class="dim small">The most posts and replies one account may make in any 24 hours. Staff have no caps.</p>' +
 			'<label class="row" style="margin:6px 0"><input type="checkbox" id="capsOn"' + (s.daily_caps.enabled ? " checked" : "") + dis + "> Cap posts and replies per day</label>" +
 			'<div class="field"><label>Posts a day</label><input type="number" min="1" id="capPosts" value="' + esc(s.daily_caps.posts) + '"' + dis + "></div>" +
 			'<div class="field"><label>Replies a day</label><input type="number" min="1" id="capReplies" value="' + esc(s.daily_caps.replies) + '"' + dis + "></div>" +
-			(admin ? '<button class="btn primary" id="saveCaps">Save</button>' : "") + "</div>" +
+			(admin ? '<button class="btn primary" id="saveCaps">Save</button>' : need("admin")) + "</div>" +
 			'<div class="box"><h2>Announcement</h2><p class="dim small">A banner above everyone\'s timeline until they close it. Saving new text shows it again to everyone.</p>' +
 			'<div class="field"><label>Text (empty removes the banner)</label><textarea id="annText" maxlength="500"' + dis + ">" + esc(s.announcement.text) + "</textarea></div>" +
 			'<div class="field"><label>Buttons (up to 4, each opens its link in a new tab)</label><div id="annButtons" class="ann-buttons">' +
 			((s.announcement.buttons && s.announcement.buttons.length) ? s.announcement.buttons : s.announcement.link ? [{ label: "More", url: s.announcement.link }] : []).map((b) => annRow(b, dis)).join("") +
-			"</div>" + (admin ? '<button class="btn" id="addAnnBtn" type="button" style="margin-top:8px">Add button</button>' : "") + "</div>" +
-			(admin ? '<button class="btn primary" id="saveAnn">Save</button>' : "") + "</div>" +
+			"</div>" + (admin ? '<button class="btn" id="addAnnBtn" type="button" style="margin-top:8px">Add button</button>' : need("admin")) + "</div>" +
+			(admin ? '<button class="btn primary" id="saveAnn">Save</button>' : need("admin")) + "</div>" +
 			'<div class="box"><h2>Rules</h2><p class="dim small">Shown at <a href="/rules" target="_blank">/rules</a> and linked from sign-up. A blank line starts a new paragraph.</p>' +
 			'<textarea id="rules" style="min-height:160px"' + dis + ">" + esc(s.rules) + "</textarea>" +
-			(admin ? '<button class="btn primary" id="saveRules" style="margin-top:8px">Save</button>' : "") + "</div>" +
+			(admin ? '<button class="btn primary" id="saveRules" style="margin-top:8px">Save</button>' : need("admin")) + "</div>" +
 			'<div class="box"><h2>Maintenance</h2><p class="dim small">While it\'s on, everyone except staff sees this message instead of the site.</p>' +
 			'<label class="row" style="margin:6px 0"><input type="checkbox" id="maint"' + (o.maintenance ? " checked" : "") + dis + "> Maintenance mode</label>" +
 			'<div class="field"><label>Message</label><input id="maintMsg" maxlength="500" value="' + esc(o.message) + '"' + dis + "></div>" +
-			(admin ? '<button class="btn primary" data-save-ops>Save</button>' : "") + "</div>" +
+			(admin ? '<button class="btn primary" data-save-ops>Save</button>' : need("admin")) + "</div>" +
 			'<div class="box"><h2>Blocked phrases</h2><p class="dim small">Posts, articles, profiles, poll choices, image descriptions, lists and communities containing any of these are refused. One per line; case, look-alike letters from other alphabets and invisible characters are ignored.</p>' +
 			'<textarea id="blocked"' + dis + ">" + esc(o.blocked_phrases.join("\n")) + "</textarea>" +
-			(admin ? '<button class="btn primary" data-save-ops style="margin-top:8px">Save</button>' : "") + "</div>" +
+			(admin ? '<button class="btn primary" data-save-ops style="margin-top:8px">Save</button>' : need("admin")) + "</div>" +
 			'<div class="box"><h2>Blocked names</h2><p class="dim small">No handle, display name, bio, location or website may contain these. Sign-up with one is refused; an account that puts one in its profile is suspended at once (staff are only refused). Poll choices, image descriptions, lists and communities with one are refused. Case, accents, look-alike letters from other alphabets, separators, digits for letters (n1gg3r) and repeated letters are ignored; in a bio and the other longer fields words are read one at a time. One per line.</p>' +
 			'<textarea id="blockedNames"' + dis + ">" + esc((o.blocked_names || []).join("\n")) + "</textarea>" +
-			(admin ? '<div class="row" style="margin-top:8px"><button class="btn primary" data-save-ops>Save</button><button class="btn" id="checkNames">Check existing accounts</button></div><div id="nameHits"></div>' : "") + "</div>" +
+			(admin ? '<div class="row" style="margin-top:8px"><button class="btn primary" data-save-ops>Save</button><button class="btn" id="checkNames">Check existing accounts</button></div><div id="nameHits"></div>' : need("admin")) + "</div>" +
 			'<div class="box"><h2>Automod</h2><p class="dim small">Slurs, explicit hate, transphobia and abuse such as "kill yourself" are refused in posts, profiles, names, polls, image descriptions, lists, communities, articles and notes. Each refusal is a strike the account can appeal. Reclaimed queer words used without an attack and NSFW text are left alone. DMs are end-to-end encrypted, so they can\'t be read.</p>' +
 			'<label class="row" style="margin:6px 0"><input type="checkbox" id="amOn"' + (am.enabled ? " checked" : "") + dis + "> Strike accounts automatically</label>" +
 			'<div class="field"><label>Strikes count for (days)</label><input id="amDays" type="number" min="1" max="3650" value="' + esc(am.strike_days) + '"' + dis + "></div>" +
 			'<div class="field"><label>Steps, one per strike: 0 is a warning, a number is hours suspended, -1 is permanent</label><input id="amLadder" value="' + esc(am.ladder.join(", ")) + '"' + dis + "></div>" +
 			'<div class="field"><label>Second chances a week: refused content that doesn\'t count as a strike, 0 for none</label><input id="amChances" type="number" min="0" max="100" value="' + esc(am.second_chances ?? 5) + '"' + dis + "></div>" +
-			(admin ? '<button class="btn primary" id="saveAutomod">Save</button>' : "") + "</div>" +
+			(admin ? '<button class="btn primary" id="saveAutomod">Save</button>' : need("admin")) + "</div>" +
 			'<div class="box"><h2>Import from X</h2><p class="dim small">While the Import from X feature is on, who may bring their posts over from an X archive. Staff accounts skip both. An import waiting for approval is deleted after a week.</p>' +
 			'<div class="field"><label>From account age (days, 0 for any)</label><input id="aiDays" type="number" min="0" max="3650" value="' + esc(String(s.archive_import.min_age_days)) + '"' + dis + "></div>" +
 			'<label class="row" style="margin:6px 0"><input type="checkbox" id="aiApproval"' + (s.archive_import.approval ? " checked" : "") + dis + "> Staff approve each import before it starts</label>" +
-			(admin ? '<button class="btn primary" id="saveArchiveImport">Save</button>' : "") +
+			(admin ? '<button class="btn primary" id="saveArchiveImport">Save</button>' : need("admin")) +
 			(allow("archiveImports", '<h2 class="small" style="margin-top:16px">Waiting for approval</h2><div id="aiPending" class="dim small">Loading…</div>')) + "</div>" +
 
 			'<div class="box"><h2>Trends</h2><div class="field"><label>Hidden hashtags, one per line</label><textarea id="hiddenTrends"' + dis + ">" + esc(o.hidden_trends.map((t) => "#" + t).join("\n")) + "</textarea></div>" +
@@ -1145,17 +1148,17 @@ const RENDER = {
 			'<div class="row"><div class="field"><label>People needed before a hashtag trends</label><input id="trendPeople" type="number" min="1" max="1000" value="' + esc(String(o.trend_min_people ?? 3)) + '"' + dis + "></div>" +
 			'<div class="field"><label>Days an account must exist to count</label><input id="trendDays" type="number" min="0" max="365" value="' + esc(String(o.trend_min_account_days ?? 3)) + '"' + dis + "></div></div>" +
 			'<p class="dim small">Each person counts once per hashtag, and accounts that last signed in from the same address count as one person.</p>' +
-			(admin ? '<button class="btn primary" data-save-ops>Save</button>' : "") + "</div>" +
+			(admin ? '<button class="btn primary" data-save-ops>Save</button>' : need("admin")) + "</div>" +
 			'<div class="box"><h2>Pinned post</h2><p class="dim small">Shown at the top of everyone\'s home timeline. Paste a post\'s link or id; empty unpins.</p>' +
 			'<div class="field"><input id="pin" value="' + esc(o.global_pin || "") + '" placeholder="https://…/status/123"' + dis + "></div>" +
-			(admin ? '<button class="btn primary" data-save-ops>Save</button>' : "") + "</div>" +
+			(admin ? '<button class="btn primary" data-save-ops>Save</button>' : need("admin")) + "</div>" +
 			"</div>" +
 			"<h2>Logo and icons</h2><p class=\"dim small\">PNG, JPEG or WebP, up to 2 MB. Each replaces the shipped image of the same name.</p>" +
 			'<div class="grid2">' + Object.entries(slots).map(([slot, label]) =>
 				'<div class="box"><h2 class="small">' + esc(label) + '</h2><div style="background:' + (slot.endsWith("light") ? "#fff" : "#000") + ';border:1px solid var(--line);border-radius:8px;padding:12px;display:grid;place-items:center;min-height:80px">' +
 				'<img alt="" style="max-width:100%;max-height:60px" src="/public/' + slot + ".png?t=" + Date.now() + '"></div>' +
-				'<div class="row" style="margin-top:10px">' + (admin ? '<label class="btn">Upload<input type="file" accept="image/png,image/jpeg,image/webp" data-slot="' + slot + '" hidden></label>' : "") +
-				(admin && branding[slot] ? '<button class="btn" data-reset="' + slot + '">Use the default</button>' : "") +
+				'<div class="row" style="margin-top:10px">' + (admin ? '<label class="btn">Upload<input type="file" accept="image/png,image/jpeg,image/webp" data-slot="' + slot + '" hidden></label>' : need("admin")) +
+				(admin ? (branding[slot] ? '<button class="btn" data-reset="' + slot + '">Use the default</button>' : "") : "") +
 				'<span class="dim small">' + (branding[slot] ? "uploaded" : "default") + "</span></div></div>").join("") + "</div>";
 
 		const save = (body, done) => act(() => api("saveSettings", body), done).then(route);
@@ -1255,7 +1258,7 @@ const RENDER = {
 			const { held } = await api("heldIdentities");
 			$("#held").innerHTML = held.length
 				? '<div class="scroll"><table class="table"><tr><th>Kind</th><th>Value</th><th>Why</th><th></th></tr>' + held.map((h, i) => "<tr><td>" + esc(h.kind) + '</td><td class="code">' + esc(h.value) + '</td><td class="small dim">' + esc(h.reason) + " · " + esc(when(h.created_at)) + "</td><td>" +
-					(can("releaseIdentity") ? '<button class="btn" data-release="' + i + '">Release</button>' : "") + "</td></tr>").join("") + "</table></div>"
+					allow("releaseIdentity", '<button class="btn" data-release="' + i + '">Release</button>') + "</td></tr>").join("") + "</table></div>"
 				: '<div class="empty">Nothing held.</div>';
 			$("#held").querySelectorAll("[data-release]").forEach((b) => b.onclick = () => {
 				const h = held[Number(b.dataset.release)];
@@ -1368,21 +1371,21 @@ async function renderUser(main, id) {
 		[["", "none"], ["blue", "blue"], ["business", "gold (organisation)"], ["government", "grey (government organisation)"], ["government_individual", "grey (government official)"]].map(([v, l]) => '<option value="' + v + '"' + ((u.verified_type ?? "") === v ? " selected" : "") + ">" + l + "</option>").join("") +
 		'</select>' + (can("setBadge") ? "" : need("setBadge")) + '</div><div class="field"><label>Translator badge (a globe after the verification badge)</label><select id="translator"' + (canHere("setTranslator") ? "" : " disabled") + ">" +
 		[["", "none"], ["translator", "blue (translator)"], ["moderator", "gold (translator moderator)"], ["approver", "yellow (approver)"]].map(([v, l]) => '<option value="' + v + '"' + ((u.translator ?? "") === v ? " selected" : "") + ">" + l + "</option>").join("") +
-		'</select></div><div class="field"><label>Profile label (under the name, where X shows "Parody account"; <a href="#badges">make one</a>)</label><select id="plabel"' + (can("setProfileLabel") ? "" : " disabled") + ">" +
+		'</select>' + (can("setTranslator") ? "" : need("setTranslator")) + '</div><div class="field"><label>Profile label (under the name, where X shows "Parody account"; <a href="#badges">make one</a>)</label><select id="plabel"' + (can("setProfileLabel") ? "" : " disabled") + ">" +
 		[["None", "none"], ["Parody", "Parody account"], ["Commentary", "Commentary account"], ["Fan", "Fan account"]].concat(labels.map((l) => [l.id, l.text])).map(([v, l]) => '<option value="' + esc(v) + '"' + ((u.label_id || u.parody_label || "None") === v ? " selected" : "") + ">" + esc(l) + "</option>").join("") +
 		'</select>' + (can("setProfileLabel") ? "" : need("setProfileLabel")) + '</div><div class="field"><label>Pride flag</label><div class="flags" id="flags">' +
 		[{ id: "", name: "none" }].concat(flags).map((f) => '<button type="button" title="' + esc(f.name) + '" data-flag="' + esc(f.id) + '" class="' + ((u.flag ?? "") === f.id ? "on" : "") + '"' + (can("setFlag") ? "" : " disabled") + ">" +
 			(f.id ? '<img alt="" src="/public/flag-' + esc(f.id) + '.svg">' : "none") + "</button>").join("") + "</div>" + (can("setFlag") ? "" : need("setFlag")) + "</div>" +
 		(u.decor ? '<div class="field"><label>Profile decor from Steam</label><div class="dim small">' +
 			esc([u.decor.profile && "game profile " + u.decor.profile.name, u.decor.theme && "theme " + u.decor.theme, u.decor.background && "background " + u.decor.background.name, u.decor.frame && "frame " + u.decor.frame.name].filter(Boolean).join(" · ")) +
-			"</div>" + (canHere("resetDecor") ? '<button class="btn" id="resetDecor" style="margin-top:6px">Reset decor</button>' : "") + "</div>" : "") +
+			"</div>" + (canHere("resetDecor") ? '<button class="btn" id="resetDecor" style="margin-top:6px">Reset decor</button>' : can("resetDecor") ? "" : need("resetDecor")) + "</div>" : "") +
 		'<div class="field"><label>Custom badges, in the order they show (<a href="#badges">make one</a>)</label>' +
 		(u.badge_ids.length ? '<div class="list">' + u.badge_ids.map((bid, i) => {
 			const b = badges.find((x) => x.id === bid);
 			return '<div class="row" style="margin-bottom:6px"><img alt="" src="/public/badge-' + esc(bid) + '.png" width="20" height="20" style="border-radius:3px"><span style="flex:1">' + esc(b?.name ?? "?") + "</span>" +
 				(can("setBadges") ? (i ? '<button class="btn" data-up="' + i + '" title="Show earlier"><span class="icon">arrow_upward</span></button>' : "") + '<button class="btn" data-drop="' + i + '" title="Remove"><span class="icon">close</span></button>' : "") + "</div>";
 		}).join("") + "</div>" : '<p class="dim small" style="margin:0">None.</p>') +
-		(can("setBadges") && badges.some((b) => !u.badge_ids.includes(b.id)) ? '<select id="addBadge"><option value="">Add a badge…</option>' + badges.filter((b) => !u.badge_ids.includes(b.id)).map((b) => '<option value="' + esc(b.id) + '">' + esc(b.name) + "</option>").join("") + "</select>" : "") +
+		(can("setBadges") ? (badges.some((b) => !u.badge_ids.includes(b.id)) ? '<select id="addBadge"><option value="">Add a badge…</option>' + badges.filter((b) => !u.badge_ids.includes(b.id)).map((b) => '<option value="' + esc(b.id) + '">' + esc(b.name) + "</option>").join("") + "</select>" : "") : need("setBadges")) +
 		'<p class="dim small" style="margin:4px 0 0">The first one fills X\'s badge slot (after an organisation\'s badge, if any); the rest and the flag follow it.</p></div>' +
 		('<div class="field"><label>Badge its affiliates wear</label><select id="orgBadge"' + (can("setOrgBadge") ? "" : " disabled") + ">" + badgeOptions(u.org_badge_id, "its profile picture") + "</select>" + (can("setOrgBadge") ? "" : need("setOrgBadge")) + "</div>") +
 		"</div>" +
@@ -1390,25 +1393,25 @@ async function renderUser(main, id) {
 		'<div class="box"><h2>Standing</h2><p class="dim small">Now: <b>' + esc(u.status) + "</b>" + (u.status_until ? " until " + esc(when(u.status_until)) : "") + "</p>" +
 		'<p class="dim small">Active strikes: <b>' + strikes + "</b>. The next strike " + (next_step < 0 ? "suspends for good" : next_step > 0 ? "suspends for " + next_step + " hours" : "is a warning") + ".</p>" +
 		'<div class="field"><label>Reason (kept in the audit log)</label><input id="reason" placeholder="optional"></div>' +
-		'<div class="field"><label>For</label><select id="for"' + (!can("setTemporaryStatus") || self ? " disabled" : "") + '><option value="">until lifted</option><option value="1">1 hour</option><option value="24">1 day</option><option value="168">1 week</option><option value="720">30 days</option></select></div><div class="row">' +
+		'<div class="field"><label>For</label><select id="for"' + (!can("setTemporaryStatus") || self ? " disabled" : "") + '><option value="">until lifted</option><option value="1">1 hour</option><option value="24">1 day</option><option value="168">1 week</option><option value="720">30 days</option></select>' + (can("setTemporaryStatus") || self ? "" : need("setTemporaryStatus")) + '</div><div class="row">' +
 		[["active", "Reinstate", ""], ["restricted", "Restrict", "Can read, can't post"], ["limited", "Limit", "Only followers see their posts"], ["suspended", "Suspend", "Signed out, hidden everywhere"]]
-			.map(([s, l, t]) => '<button class="btn' + (s === "suspended" ? " danger" : "") + '" data-status="' + s + '" title="' + esc(t) + '"' + (u.status === s || !can("setStatus") || self ? " disabled" : "") + ">" + l + "</button>").join("") +
+			.map(([s, l, t]) => '<button class="btn' + (s === "suspended" ? " danger" : "") + '" data-status="' + s + '" title="' + esc(t) + '"' + (u.status === s || !can("setStatus") || self ? " disabled" : "") + ">" + l + "</button>").join("") + (can("setStatus") || self ? "" : need("setStatus")) +
 		'</div><p class="dim small">Restrict: can read, can\'t post. Limit: only followers see their posts. Suspend: signed out and hidden everywhere.</p></div>' +
 		// access
-		'<div class="box"><h2>Access</h2><div class="row">' + (canHere("resetPassword") ? '<button class="btn" id="reset">Reset password</button>' : "") + (canHere("signOut") ? '<button class="btn" id="signout">Sign out everywhere</button>' : "") +
-			(canHere("revokeApiTokens") ? '<button class="btn danger" id="revoketokens"' + (u.api_tokens ? "" : " disabled") + ">Revoke API tokens (" + u.api_tokens + ")</button>" : "") + '</div><div id="secret"></div>' +
-		'<label class="row" style="margin-top:14px"><input type="checkbox" id="notes-access"' + (u.notes_writer ? " checked" : "") + (canHere("setNotesAccess") ? "" : " disabled") + '>Community Notes writing access</label>' +
+		'<div class="box"><h2>Access</h2><div class="row">' + (canHere("resetPassword") ? '<button class="btn" id="reset">Reset password</button>' : can("resetPassword") ? "" : need("resetPassword")) + (canHere("signOut") ? '<button class="btn" id="signout">Sign out everywhere</button>' : can("signOut") ? "" : need("signOut")) +
+			(canHere("revokeApiTokens") ? '<button class="btn danger" id="revoketokens"' + (u.api_tokens ? "" : " disabled") + ">Revoke API tokens (" + u.api_tokens + ")</button>" : can("revokeApiTokens") ? "" : need("revokeApiTokens")) + '</div><div id="secret"></div>' +
+		'<label class="row" style="margin-top:14px"><input type="checkbox" id="notes-access"' + (u.notes_writer ? " checked" : "") + (canHere("setNotesAccess") ? "" : " disabled") + '>Community Notes writing access</label>' + (can("setNotesAccess") ? "" : need("setNotesAccess")) +
 		'<label class="row" style="margin-top:8px"><input type="checkbox" id="never-sensitive"' + (u.never_sensitive ? " checked" : "") + (can("setNeverSensitive") ? "" : " disabled") + '>Never mark their posts as sensitive</label>' + (can("setNeverSensitive") ? "" : need("setNeverSensitive")) +
-		(canHere("admin") ? '<div class="field" style="margin-top:14px"><label>Staff role</label><select id="role"><option value="">none</option>' + ["support", "moderator", "admin"].map((r) => '<option' + (u.role === r ? " selected" : "") + ">" + r + "</option>").join("") + "</select></div>" : "") +
-		(can("deleteUser") && !self ? '<div class="field" style="margin-top:14px"><label>Delete account (type @' + esc(u.screen_name) + ' to confirm)</label><div class="row"><input id="confirm" placeholder="' + esc(u.screen_name) + '"><button class="btn danger" id="delete">Delete forever</button></div></div>' : "") +
+		(canHere("admin") ? '<div class="field" style="margin-top:14px"><label>Staff role</label><select id="role"><option value="">none</option>' + ["support", "moderator", "admin"].map((r) => '<option' + (u.role === r ? " selected" : "") + ">" + r + "</option>").join("") + "</select></div>" : can("admin") ? "" : need("admin")) +
+		(!self ? allow("deleteUser", '<div class="field" style="margin-top:14px"><label>Delete account (type @' + esc(u.screen_name) + ' to confirm)</label><div class="row"><input id="confirm" placeholder="' + esc(u.screen_name) + '"><button class="btn danger" id="delete">Delete forever</button></div></div>') : "") +
 		"</div>" +
 		// messages, private notes, sessions
 		'<div class="box"><h2>Messages to the account</h2><p class="dim small">' + (u.instance ? "It can't read messages from here. Its own instance's staff can message it." : "They arrive in its notifications. A warning or strike can be appealed.") + "</p>" +
 		(messages.length ? '<div class="list" style="margin-bottom:12px">' + messages.map((m) => '<p><span class="pill' + (m.kind === "strike" ? " suspended" : m.kind === "warning" ? " restricted" : "") + '">' + esc(m.kind) + "</span> " +
 			(m.revoked_at ? '<s class="dim">' + esc(m.body) + "</s>" : esc(m.body)) + '<br><span class="dim small">' + (m.actor ? "@" + esc(m.actor) + " · " : "") + esc(when(m.created_at)) + (m.read_at ? " · read" : "") + (m.revoked_at ? " · withdrawn" : "") + "</span>" +
-			(m.kind === "strike" && !m.revoked_at && can("revokeStrike") ? ' <button class="btn" data-unstrike="' + esc(m.id) + '">Withdraw</button>' : "") + "</p>").join("") + "</div>" : "") +
-		(canHere("sendStaffMessage") && !self ? '<div class="field"><select id="msgKind"><option value="message">Message</option><option value="warning">Warning</option><option value="strike">Strike</option></select></div>' +
-			'<div class="field"><textarea id="msgBody" maxlength="2000" placeholder="What they\'ll read"></textarea></div><label class="row" style="margin:6px 0"><input type="checkbox" id="msgEscalate" checked> A strike counts toward suspension</label><button class="btn primary" id="send">Send</button>' : "") + "</div>" +
+			(m.kind === "strike" && !m.revoked_at ? allow("revokeStrike", ' <button class="btn" data-unstrike="' + esc(m.id) + '">Withdraw</button>') : "") + "</p>").join("") + "</div>" : "") +
+		(!self ? (canHere("sendStaffMessage") ? '<div class="field"><select id="msgKind"><option value="message">Message</option><option value="warning">Warning</option><option value="strike">Strike</option></select></div>' +
+			'<div class="field"><textarea id="msgBody" maxlength="2000" placeholder="What they\'ll read"></textarea></div><label class="row" style="margin:6px 0"><input type="checkbox" id="msgEscalate" checked> A strike counts toward suspension</label><button class="btn primary" id="send">Send</button>' : can("sendStaffMessage") ? "" : need("sendStaffMessage")) : "") + "</div>" +
 		'<div class="box"><h2>Staff notes</h2><p class="dim small">Only staff see these.</p>' +
 		(notes.length ? '<div class="list" style="margin-bottom:12px">' + notes.map((n) => '<p style="white-space:pre-wrap">' + esc(n.body) + '<br><span class="dim small">@' + esc(n.actor ?? "?") + " · " + esc(when(n.created_at)) + "</span></p>").join("") + "</div>" : "") +
 		(allow("addStaffNote", '<div class="field"><textarea id="noteBody" maxlength="2000" placeholder="Context for other staff"></textarea></div><button class="btn primary" id="addNote">Add note</button>')) + "</div>" +
@@ -1416,13 +1419,13 @@ async function renderUser(main, id) {
 		'<div class="box"><h2>Sessions</h2>' + (sessions === null ? '<p class="dim small">Hidden: this account is staff at your level or above.</p>'
 			: sessions.length ? '<div class="list">' + sessions.slice(0, 10).map((s) => "<p>" + esc(browser(s.user_agent)) + (s.current ? ' <span class="pill staff">you, now</span>' : "") +
 				'<br><span class="dim small">' + (s.ip ? esc(s.ip) + " · " : "") + "signed in " + esc(when(s.created_at)) + " · last active " + esc(when(s.last_seen_at)) + "</span>" +
-				(s.current || !can("revokeSession") ? "" : ' <button class="btn" data-session="' + esc(s.id) + '">Sign out</button>') + "</p>").join("") +
+				(s.current ? "" : allow("revokeSession", ' <button class="btn" data-session="' + esc(s.id) + '">Sign out</button>')) + "</p>").join("") +
 				(sessions.length > 10 ? '<p class="dim small">and ' + (sessions.length - 10) + ' older (Access → Sign out everywhere ends them all)</p>' : "") + "</div>"
 			: '<p class="dim small">Not signed in anywhere.</p>') + "</div>" +
 		"</div>" +
 		// organisation
-		('<h2>Affiliates</h2>' + (canHere("addAffiliate") ? '<div class="bar"><input id="aff" placeholder="@handle to add"><button class="btn primary" id="addaff">Add affiliate</button></div>' : "") +
-			(affiliates.length ? '<div class="scroll"><table class="table">' + affiliates.map((a) => '<tr><td>' + person(a) + "</td><td>" + (can("removeAffiliate") ? '<button class="btn danger" data-unaff="' + esc(a.id) + '">Remove</button>' : "") + "</td></tr>").join("") + "</table></div>" : '<div class="empty">No affiliates yet.</div>')) +
+		('<h2>Affiliates</h2>' + (canHere("addAffiliate") ? '<div class="bar"><input id="aff" placeholder="@handle to add"><button class="btn primary" id="addaff">Add affiliate</button></div>' : can("addAffiliate") ? "" : need("addAffiliate")) +
+			(affiliates.length ? '<div class="scroll"><table class="table">' + affiliates.map((a) => '<tr><td>' + person(a) + "</td><td>" + allow("removeAffiliate", '<button class="btn danger" data-unaff="' + esc(a.id) + '">Remove</button>') + "</td></tr>").join("") + "</table></div>" : '<div class="empty">No affiliates yet.</div>')) +
 		(alts?.length ? '<h2>Seen from the same addresses</h2><p class="dim small">Accounts that signed in from an address this one used in the last 90 days. Shared networks put strangers here too.</p><p>' + alts.map((a) => '<a href="#user/' + esc(a.id) + '">@' + esc(a.screen_name) + "</a>" + (a.status !== "active" ? ' <span class="pill ' + esc(a.status) + '">' + esc(a.status) + "</span>" : "")).join(", ") + "</p>" : "") +
 		(invited.length ? "<h2>Invited</h2><p>" + invited.map((i) => '<a href="#user/' + esc(i.id) + '">@' + esc(i.screen_name) + "</a>").join(", ") + "</p>" : "") +
 		"<h2>History</h2>" + (log.length ? '<table class="table">' + log.map((e) => '<tr><td class="small dim">' + esc(when(e.created_at)) + "</td><td>" + (e.automatic ? "automod" : "@" + esc(e.actor ?? "?")) + " " + esc(e.action.replace(/_/g, " ")) + '</td><td class="small dim code">' + esc(e.detail ? JSON.stringify(e.detail) : "") + "</td></tr>").join("") + "</table>" : '<div class="empty">No staff actions yet.</div>');
