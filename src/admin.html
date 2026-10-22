@@ -202,7 +202,7 @@ const PAGES = {
 	topics: { icon: "tag", title: "Topics" },
 	cards: { icon: "newspaper", title: "Explore cards" },
 	email: { icon: "mail", title: "Email" },
-	apps: { icon: "devices", title: "Client apps" },
+	apps: { icon: "devices", title: "Client apps", needs: "platforms" },
 	oauth: { icon: "key", title: "OAuth apps" },
 	federation: { icon: "hub", title: "Federation" },
 	settings: { icon: "tune", title: "Settings" },
@@ -219,7 +219,11 @@ window.addEventListener("hashchange", route);
 
 async function route() {
 	const [page, arg] = location.hash.slice(1).split("/");
-	const name = PAGES[page] ? page : page === "user" ? "users" : "overview";
+	let name = PAGES[page] ? page : page === "user" ? "users" : "overview";
+	if (PAGES[name] && PAGES[name].needs && !can(PAGES[name].needs)) {
+		if (location.hash !== "#overview") { location.replace("#overview"); return; }
+		name = "overview";
+	}
 	document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("on", b.dataset.page === name));
 	const main = $("#main");
 	main.innerHTML = '<div class="empty">Loading…</div>';
@@ -715,11 +719,11 @@ const RENDER = {
 		const { platforms } = await api("platforms");
 		main.innerHTML = "<h1>Client apps</h1>" +
 			'<p class="dim">Posts show the app they came from after their time, like "{{instance}} for Web". Give another app (your Android build, a bot) a token here; posts sent with it show its name. People still sign in as usual: the token only names the app.</p>' +
-			(can("admin") ? '<div class="box" style="margin-bottom:16px"><h2>New app</h2><div class="row"><input id="al" placeholder="{{instance}} for Android" maxlength="80" style="flex:1;min-width:200px"><button class="btn primary" id="ac">Create token</button></div><div id="asecret"></div></div>' : "") +
+			(can("createPlatform") ? '<div class="box" style="margin-bottom:16px"><h2>New app</h2><div class="row"><input id="al" placeholder="{{instance}} for Android" maxlength="80" style="flex:1;min-width:200px"><button class="btn primary" id="ac">Create token</button></div><div id="asecret"></div></div>' : "") +
 			'<div class="scroll">' + (platforms.length
 				? '<table class="table"><tr><th>Shown as</th><th>Made</th><th>State</th><th></th></tr>' +
 					platforms.map((p) => "<tr><td>" + esc(p.label) + '</td><td class="small dim">' + esc(when(p.created_at)) + "</td><td>" + (p.revoked ? '<span class="pill suspended">revoked</span>' : '<span class="pill">active</span>') +
-						"</td><td>" + (can("admin") && !p.revoked ? '<button class="btn danger" data-revoke="' + esc(p.id) + '">Revoke</button>' : "") + "</td></tr>").join("") + "</table>"
+						"</td><td>" + (can("revokePlatform") && !p.revoked ? '<button class="btn danger" data-revoke="' + esc(p.id) + '">Revoke</button>' : "") + "</td></tr>").join("") + "</table>"
 				: '<div class="empty">No apps yet. Posts from the web app show "{{instance}} for Web".</div>') + "</div>";
 		if ($("#ac")) $("#ac").onclick = () => act(async () => {
 			const r = await api("createPlatform", { label: $("#al").value });

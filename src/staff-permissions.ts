@@ -20,6 +20,7 @@ export const PERMISSIONS: Record<string, Permission> = {
 	standing: { group: "Moderation", label: "Restrict, limit, suspend and reinstate accounts, for a while or until lifted, one at a time or many", role: "moderator", actions: ["setStatus", "setTemporaryStatus", "bulkStatus"] },
 	reports: { group: "Moderation", label: "Close reports", role: "moderator", actions: ["resolveReport"] },
 	appeals: { group: "Moderation", label: "See and answer appeals", role: "moderator", actions: ["appeals", "resolveAppeal"] },
+	note_appeals: { group: "Moderation", label: "Review Community Note appeals", role: "moderator", actions: [] },
 	messages: { group: "Moderation", label: "Send messages, warnings and strikes, and withdraw strikes", role: "moderator", actions: ["sendStaffMessage", "revokeStrike"] },
 	delete_posts: { group: "Moderation", label: "Delete posts", role: "moderator", actions: ["deletePost"] },
 	post_visibility: { group: "Moderation", label: "Hide posts and articles, mark them sensitive, label them", role: "moderator", actions: ["setPostVisibility", "setPostNotice", "setArticleVisibility"] },
