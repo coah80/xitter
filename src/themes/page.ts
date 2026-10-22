@@ -20,7 +20,7 @@ form.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1
 @media (hover:hover){.pick:hover:not(:disabled){background:var(--hover)}}
 .choice{display:flex;align-items:center;gap:8px;color:var(--text);margin:0;font-size:15px}
 .choice input{width:20px;min-height:20px;height:20px;margin:0;padding:0;accent-color:var(--accent)}
-form.editor{display:grid;gap:16px;width:100%;max-width:100%;min-width:0;justify-items:stretch}
+form.editor{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;width:100%;max-width:100%;min-width:0;justify-items:stretch}
 .toks{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;width:100%;min-width:0}
 @media (max-width:520px){.toks{grid-template-columns:1fr}}
 .tok{display:grid;grid-template-columns:minmax(0,1fr) 40px 28px 28px;gap:6px;align-items:center;margin:0;min-width:0}
