@@ -59,6 +59,9 @@ const jar = Object.fromEntries(login.headers.getSetCookie().map((c) => {
 	const cut = pair.indexOf("=");
 	return [pair.slice(0, cut), pair.slice(cut + 1)];
 }));
+const cookie = Object.entries(jar).map(([k, v]) => `${k}=${v}`).join("; ");
+// only staff get the panel; anyone else's tab load of /admin is a plain 404
+const staff = (await fetch(`${origin}/admin`, { headers: { cookie, "sec-fetch-dest": "iframe" } })).status === 200;
 
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || "/usr/bin/google-chrome", headless: "new", args: ["--no-sandbox"] });
 const page = await browser.newPage();
@@ -135,7 +138,10 @@ for (const path of process.env.ONLY_EXITS ? [] : paths) {
 	const url = origin + path;
 	try {
 		await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
-		if (path === "/account/no-such-page") {
+		if (!staff && path.startsWith("/admin")) {
+			const res = await fetch(url, { headers: { cookie, "sec-fetch-dest": "document" } });
+			if (res.status !== 404) throw new Error(`${path} answered ${res.status} for a viewer who is not staff`);
+		} else if (path === "/account/no-such-page") {
 			// not an owned root, so no frame: the plain missing page answers
 			const text = await page.evaluate(() => document.body.innerText);
 			if (!text.includes("Xitter has no page here")) throw new Error(`${path} did not show the missing page`);
@@ -208,7 +214,8 @@ const exits = [
 		await ctx.close();
 	}],
 ];
-for (const [label, run] of exits) {
+const exitsRun = exits.filter(([label]) => staff || label !== "from the framed admin panel");
+for (const [label, run] of exitsRun) {
 	try {
 		await run();
 		console.log("ok exit", label);
@@ -223,4 +230,4 @@ if (failures.length) {
 	console.error(failures.join("\n"));
 	process.exit(1);
 }
-console.log(`direct load ok for ${paths.length} urls, and every framed page has a way out (${exits.length} checks)`);
+console.log(`direct load ok for ${paths.length} urls, and every framed page has a way out (${exitsRun.length} checks)`);
