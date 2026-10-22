@@ -418,6 +418,11 @@ export const TIDY_SCRIPT = `(function(){
 		}
 		var css="left:"+left+"px;top:"+top+"px;width:"+width+"px;height:"+Math.max(0,bottom-top)+"px";
 		if(frame.getAttribute("data-at")!==css){frame.setAttribute("data-at",css);frame.style.cssText=css}
+		// X's chat button floats over the bottom right of the column: the
+		// page's floating save controls keep clear of it
+		var chat=document.querySelector('[data-testid="chat-drawer-main"]'),cr=chat&&chat.getBoundingClientRect(),dock=0;
+		if(cr&&cr.width&&cr.left<left+width&&cr.right>left&&cr.top<bottom&&cr.bottom>top)dock=Math.ceil(left+width-cr.left)+8;
+		try{var de=frame.contentDocument.documentElement;if(de.style.getPropertyValue("--xt-dock")!==dock+"px")de.style.setProperty("--xt-dock",dock+"px")}catch(e){}
 	}
 	function sync(){
 		var p=location.pathname,kind=null,want=null,f=framedFor(p);

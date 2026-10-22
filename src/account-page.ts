@@ -129,7 +129,7 @@ button.secondary{background:transparent;border-color:var(--outline);color:var(--
 button.danger{background:var(--danger);color:#fff}
 button.small{min-height:32px;padding:0 14px;font-size:14px}
 button:disabled{opacity:.5;cursor:default}
-.save,.savebar{position:sticky;bottom:16px;z-index:4;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;width:max-content;max-width:100%;margin-left:auto;padding:0;background:transparent;border:0}
+.save,.savebar{position:sticky;bottom:16px;z-index:4;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;width:max-content;max-width:calc(100% - var(--xt-dock,0px));margin-left:auto;margin-right:var(--xt-dock,0px);padding:0;background:transparent;border:0}
 .save button,.savebar button{box-shadow:0 2px 12px rgb(0 0 0 / .28)}
 @media (hover:hover){
 .back:hover,.tabs a:hover{background:var(--hover)}
