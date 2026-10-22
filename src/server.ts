@@ -60,10 +60,10 @@ import { emailRoute } from "./email-address";
 import { embedImage, linkPreview, oembed } from "./embeds";
 import { noteAppealsRoute } from "./note-appeals";
 import { decorCatalog, decorFor, decorRoute, decorShop, steamFile } from "./decor";
-import { nightModeCookies, themeApi, themeExport, themeImport } from "./themes/api";
+import { loadLook, nightModeCookies, themeApi, themeExport, themeImport } from "./themes/api";
 import { resolveBackground } from "./themes/css";
 import { themeRoute } from "./themes/page";
-import { readPrefs } from "./themes/validate";
+import { paletteOf, readPrefs } from "./themes/validate";
 import { serveFont } from "./fonts";
 import { migrationApi } from "./migration";
 import { failInterrupted } from "./migration-import";
@@ -129,9 +129,13 @@ const etags = new WeakMap<Buffer, string>();
 // The panel names the instance in its markup and in its scripts' single-quoted
 // strings; as entities the name is safe in both.
 const ADMIN_ENTITIES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;", "\\": "&#92;" };
-const adminPage = async () => {
+// framed beside the client, the panel takes the viewer's theme the way the
+// Xitter settings pages do (light, dim or dark)
+const adminPage = async (req: Request, viewer: Viewer) => {
 	const name = settings().instance_name.replace(/[&<>"'\\]/g, (c) => ADMIN_ENTITIES[c]);
-	return (await Bun.file(new URL("./admin.html", import.meta.url)).text()).replaceAll("{{instance}}", () => name);
+	const theme = paletteOf(await loadLook(viewer.id), parseCookies(req).night_mode) ?? "dark";
+	const page = (await Bun.file(new URL("./admin.html", import.meta.url)).text()).replaceAll("{{instance}}", () => name);
+	return page.replace('<html lang="en">', `<html lang="en" data-theme="${theme}">`).replace("/public/icon-dark.png", theme === "light" ? "/public/icon-light.png" : "/public/icon-dark.png");
 };
 
 function staffBlockedPage(reason: string) {
@@ -501,7 +505,7 @@ async function route(req: Request): Promise<Response | undefined> {
 	if ((p === "/admin" || p === "/admin/") && viewer?.role) {
 		const blocked = await staffGate(req, viewer);
 		if (blocked) return staffBlockedPage(blocked);
-		if (!opensInTab(req)) return new Response(await adminPage(), { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", ...FRAMED_HEADERS } });
+		if (!opensInTab(req)) return new Response(await adminPage(req, viewer), { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", ...FRAMED_HEADERS } });
 		hostAdmin = true;
 	}
 	if (p === "/_debug/unknown" && viewer?.role === "admin") return Response.json(Object.fromEntries([...unknown].sort((a, b) => b[1] - a[1])));
