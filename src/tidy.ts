@@ -269,15 +269,20 @@ export const TIDY_SCRIPT = `(function(){
 	function xitterRow(){
 		var spec=T.xitter;
 		if(!spec||document.querySelector("a[data-xitter-settings]"))return;
-		var a=document.querySelector('a[href="/settings/account"]');
-		var row=a&&a.parentElement;
-		if(!row||!row.parentElement)return;
-		var box=row.cloneNode(true);
+		var account=document.querySelector('a[href="/settings/account"]');
+		var sample=document.querySelector('a[href="/settings/monetization"]')||document.querySelector('a[href="/settings/privacy_and_safety"]')||account;
+		var accountBox=account&&account.parentElement;
+		var sampleBox=sample&&sample.parentElement;
+		if(!accountBox||!sampleBox||!accountBox.parentElement||accountBox.parentElement!==sampleBox.parentElement)return;
+		var box=sampleBox.cloneNode(true);
 		var link=box.querySelector("a");
 		if(!link)return;
-		copy(link,spec);
+		leave(link,spec.href);
+		link.removeAttribute("data-testid");
 		link.setAttribute("data-xitter-settings","");
-		row.parentElement.insertBefore(box,row.nextSibling);
+		var title=link.querySelector("span");
+		if(title)title.textContent=spec.text;
+		accountBox.parentElement.insertBefore(box,accountBox.nextSibling);
 	}
 	function staffNav(){
 		var spec=T.staff&&T.staff.nav;
