@@ -68,6 +68,7 @@ import { failInterrupted } from "./migration-import";
 import { migrateRoute } from "./migration-page";
 import { acceptedEncoding, compressResponse, compressedFile } from "./compress";
 import { forgetRanking } from "./ranking";
+import { blocksClientShell, trailingSlashTarget, xitterNotFoundPage } from "./owned-paths";
 
 const MIME: Record<string, string> = {
 	js: "text/javascript; charset=utf-8",
@@ -313,6 +314,10 @@ async function route(req: Request): Promise<Response | undefined> {
 	rememberIp(req, server.requestIP(req)?.address);
 	const url = new URL(req.url);
 	const p = url.pathname;
+	if (req.method === "GET" || req.method === "HEAD") {
+		const slash = trailingSlashTarget(p);
+		if (slash) return Response.redirect(slash + url.search, 302);
+	}
 	// for Docker's health check (Dockerfile): the server answers and reaches its database
 	if (p === "/healthz") {
 		const db = await Promise.race([sql`select 1`.then(() => true, () => false), Bun.sleep(3000).then(() => false)]);
@@ -470,7 +475,7 @@ async function route(req: Request): Promise<Response | undefined> {
 	if (isPlayerPage(p)) return viewer ? playerPage(p, viewer.id) : new Response("not found", { status: 404 });
 	// uploads stay inside the instance: only signed-in users get them
 	if (p.startsWith("/media/")) return viewer ? serveMedia(req, p, viewer) : new Response("not found", { status: 404 });
-	// the admin panel: staff only; everyone else gets the client's not-found page
+	// the admin panel: staff only. anyone else signed in gets our 404, not the client shell
 	if (p.startsWith("/admin/api/")) return adminApi(req, p.slice("/admin/api/".length), viewer);
 	if (p === "/admin/flags.json" && viewer?.role) return Response.json(flagPickerData(null).flags);
 	// a backup, for an admin's browser to save
@@ -502,6 +507,7 @@ async function route(req: Request): Promise<Response | undefined> {
 	if (!viewer && p !== "/" && !p.startsWith("/i/jf/onboarding")) return Response.redirect("/", 302);
 	// maintenance: guests see the notice; ?staff=1 is the sign-in page, for staff
 	if (!viewer && p === "/" && settings().operations.maintenance && !url.searchParams.has("staff")) return maintenancePage(true);
+	if (viewer && blocksClientShell(p)) return xitterNotFoundPage();
 	const [communityRows, flagRows, links] = viewer
 		? await Promise.all([
 			sql`select 1 from community_members where user_id = ${viewer.id}::bigint limit 1`,
