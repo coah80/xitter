@@ -58,7 +58,10 @@ test("a member sees the pages menuLinks already allowed, and no staff data", () 
 	const sections = xitterSections(member);
 	expect(sections.map((s) => s.id)).toEqual(["appearance", "account", "security", "notes"]);
 	expect(hrefs(sections.find((s) => s.id === "security")!.rows)).toEqual(["/account/passkeys", "/account/2fa", "/account/apps", "/account/api"]);
-	expect(hrefs(xitterSections(facts({ instance: "other.example" })).find((s) => s.id === "security")!.rows)).not.toContain("/account/2fa");
+	const remote = xitterSections(facts({ instance: "other.example" })).find((s) => s.id === "security")!.rows;
+	expect(hrefs(remote)).not.toContain("/account/2fa");
+	expect(hrefs(remote)).not.toContain("/account/passkeys");
+	expect(hrefs(publicMenuLinks(facts({ instance: "other.example" })))).not.toContain("/account/passkeys");
 });
 
 test("staff tools follow what each role can open", () => {

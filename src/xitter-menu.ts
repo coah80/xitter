@@ -56,7 +56,7 @@ const ROWS: Draft[] = [
 	{ href: "/account/automation", text: "Automation", description: "Name the account that runs this one.", icon: ROBOT, where: "tabs", see: () => true },
 	{ href: "/account/notices", text: "Staff notices", description: "", icon: SHIELD, where: "both", see: (f) => f.notices },
 	{ href: "/account/instances", text: "Other instances", description: "Hide accounts and organisations from other instances.", icon: GLOBE, viewBox: "0 -960 960 960", where: "settings", see: (f) => f.federation },
-	{ href: "/account/passkeys", text: "Passkeys", description: "Sign in with your fingerprint, face or screen lock instead of a password.", icon: KEY, viewBox: "0 -960 960 960", where: "settings", see: () => true },
+	{ href: "/account/passkeys", text: "Passkeys", description: "Sign in with your fingerprint, face or screen lock instead of a password.", icon: KEY, viewBox: "0 -960 960 960", where: "settings", see: (f) => f.instance === null },
 	{ href: "/account/2fa", text: "Two-factor", description: "Ask for a code from an authentication app when you log in.", icon: LOCK, where: "settings", see: (f) => f.instance === null },
 	{ href: "/account/import", text: "Import from X", description: "Bring your posts, photos and videos over from your X archive.", icon: UPLOAD, viewBox: "0 -960 960 960", where: "settings", see: (f) => f.archiveImport },
 	{ href: "/account/migrate", text: "Move account", description: "Bring your account here from another instance, or take it to another one.", icon: MOVE, where: "settings", see: () => true },
