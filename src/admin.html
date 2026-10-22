@@ -149,6 +149,7 @@ const tell = (m) => parent.postMessage(Object.assign({ xitter: 1 }, m), location
 function leaveTo(path) { if (framed) tell({ type: "go", path }); else location.href = path; }
 if (framed) {
 	document.documentElement.setAttribute("data-framed", "");
+	tell({ type: "title", title: document.title });
 	addEventListener("hashchange", () => tell({ type: "hash", hash: location.hash }));
 	document.addEventListener("click", (e) => {
 		if (e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;

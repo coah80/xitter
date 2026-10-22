@@ -400,7 +400,11 @@ export const TIDY_SCRIPT = `(function(){
 		if(u.pathname.indexOf("/account/")===0||u.pathname.indexOf("/admin")===0||u.pathname.indexOf("/federation/")===0||u.pathname.indexOf("/oauth/")===0||u.pathname.indexOf("/media/")===0){location.assign(u.href);return}
 		spa(u.pathname+u.search+u.hash);
 	}
-	var frame=null,frameAt="",look=null,lastOut="";
+	var frame=null,frameAt="",look=null,lastOut="",watched=null,frameTitle="";
+	// the client lays a column out again after a resize (the rail narrowing,
+	// the settings list dropping to one column) without adding nodes, so the
+	// frame follows the column and the rail by size, not only by mutations
+	var ro=window.ResizeObserver?new ResizeObserver(function(){sync()}):null;
 	function place(host,kind,phone){
 		var r=host.getBoundingClientRect();
 		var bar=document.querySelector('[data-testid="BottomBar"]'),bb=bar&&bar.getBoundingClientRect();
@@ -422,6 +426,7 @@ export const TIDY_SCRIPT = `(function(){
 		var html=document.documentElement;
 		if(!kind){
 			if(html.hasAttribute("data-xitter-host"))html.removeAttribute("data-xitter-host");
+			frameTitle="";
 			var here=p+location.search;
 			if(here!==lastOut){lastOut=here;try{sessionStorage.setItem("xitter-admin-from",here)}catch(e){}}
 			return;
@@ -430,23 +435,34 @@ export const TIDY_SCRIPT = `(function(){
 		var phone=!host;
 		host=host||document.querySelector('main[role="main"]');
 		if(!host)return;
+		if(ro&&watched!==host){
+			watched=host;ro.disconnect();ro.observe(host);
+			var rail=document.querySelector('header[role="banner"]');
+			if(rail)ro.observe(rail);
+		}
 		var mode=kind+(phone&&kind==="settings"?"-phone":"");
 		if(html.getAttribute("data-xitter-host")!==mode)html.setAttribute("data-xitter-host",mode);
+		// the frame waits for #layers, its home: moving an iframe reloads it
+		var layers=document.getElementById("layers");
+		if(!layers)return;
 		if(!frame){
 			frame=document.createElement("iframe");
 			frame.id="xitter-frame";
 			frame.title=kind==="admin"?"Admin":"Xitter";
 			frame.src=want;frameAt=want;
+			frame.addEventListener("load",function(){sync()});
 		}else if(frameAt!==want){
 			var was=frameAt;frameAt=want;
 			if(kind==="admin"&&was.indexOf("/admin")===0){try{frame.contentWindow.location.hash=location.hash}catch(e){frame.src=want}}
 			else{try{frame.contentWindow.location.replace(want)}catch(e){frame.src=want}}
 		}
-		// beside X's #layers (menus, dialogs, the chat drawer) so those stay on top
-		var layers=document.getElementById("layers"),at=layers&&layers.parentElement;
-		if(at&&frame.nextSibling!==layers)at.insertBefore(frame,layers);
-		else if(!at&&!frame.parentElement)document.body.appendChild(frame);
+		// first inside X's #layers, so its menus, dialogs and chat drawer (added
+		// after it) paint on top. Not beside #layers: the client renders that
+		// container again while it boots and drops nodes it does not own
+		if(frame.parentElement!==layers)layers.insertBefore(frame,layers.firstChild);
 		place(host,kind,phone);
+		// the client titles a route it does not know "Page not found"
+		if(frameTitle&&document.title!==frameTitle)document.title=frameTitle;
 		// the client's empty-page screen is taller than the window; framed, the
 		// page itself never scrolls (the frame does)
 		if(scrollY)scrollTo(0,0);
@@ -459,6 +475,7 @@ export const TIDY_SCRIPT = `(function(){
 		var d=e.data;
 		if(d.type==="go")go(d.path);
 		else if(d.type==="back")go(sessionStorage.getItem("xitter-admin-from")||"/settings/xitter");
+		else if(d.type==="title"&&d.title){frameTitle=d.title;document.title=d.title}
 		else if(d.type==="hash"){
 			if(location.pathname==="/admin"&&location.hash!==d.hash){frameAt="/admin"+d.hash;nativeReplace.call(history,history.state,"","/admin"+d.hash)}
 		}else if(d.type==="page"){
@@ -466,7 +483,7 @@ export const TIDY_SCRIPT = `(function(){
 			var u=new URL(d.path,location.origin),r=routeFor(u.pathname);
 			frameAt=u.pathname+u.search;
 			if(r&&r+u.search!==location.pathname+location.search)nativeReplace.call(history,history.state,"",r+u.search);
-			if(d.title)document.title=d.title;
+			if(d.title){frameTitle=d.title;document.title=d.title}
 			// a saved theme or decoration: the client shows it after a reload
 			if(look===null)look=d.look;else if(d.look&&d.look!==look)location.reload();
 		}
