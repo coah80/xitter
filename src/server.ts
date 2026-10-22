@@ -512,7 +512,7 @@ async function route(req: Request): Promise<Response | undefined> {
 		? await Promise.all([
 			sql`select 1 from community_members where user_id = ${viewer.id}::bigint limit 1`,
 			sql`select education_flags, preferences from users where id = ${viewer.id}::bigint`,
-			menuLinks(viewer.id),
+			menuLinks(req, viewer),
 		])
 		: [[], [], []];
 	const prefs = readPrefs(flagRows[0]?.preferences);
