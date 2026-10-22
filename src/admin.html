@@ -240,9 +240,11 @@ const PAGES = {
 };
 
 function go(hash) {
+	openDetail = true;
 	if (location.hash === "#" + hash) route();
 	else location.hash = hash;
 }
+let openDetail = false;
 window.addEventListener("hashchange", route);
 
 async function route() {
@@ -262,7 +264,11 @@ async function route() {
 		if (window.matchMedia("(max-width: 700px)").matches) { document.body.dataset.depth = "0"; return; }
 		if (name !== "overview") go("overview");
 	};
-	if (window.matchMedia("(max-width: 700px)").matches) document.body.dataset.depth = "1";
+	if (window.matchMedia("(max-width: 700px)").matches) {
+		const named = location.hash.length > 1 && location.hash !== "#overview";
+		document.body.dataset.depth = named || openDetail ? "1" : "0";
+	}
+	openDetail = false;
 	const pane = $("#pane");
 	try {
 		if (page === "user" && arg) await renderUser(pane, arg);
