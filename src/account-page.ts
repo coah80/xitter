@@ -7,8 +7,23 @@ import { loadMenuFacts } from "./tidy";
 import { xitterSections } from "./xitter-menu";
 import { FRAMED_HEADERS } from "./owned-paths";
 import { renderSettingsShell, settingsChrome, SHELL_CSS } from "./settings-shell";
+import type { Accent } from "./themes/presets";
+import type { Look, Prefs } from "./themes/validate";
 
 export const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+
+export function lookKeyOf(look: Look | null, accent: Accent, decoration: unknown): string {
+	return Bun.hash(JSON.stringify([look, accent, decoration ?? null])).toString(36);
+}
+
+export type ViewerLook = { look: Look | null; lookKey: string; prefs: Prefs };
+
+export async function viewerLook(viewer: Viewer): Promise<ViewerLook> {
+	const { readPrefs } = await import("./themes/validate");
+	const [row] = await sql`select preferences, decoration from users where id = ${viewer.id}::bigint`;
+	const prefs = readPrefs(row?.preferences);
+	return { look: prefs.look, lookKey: lookKeyOf(prefs.look, prefs.accent, row?.decoration), prefs };
+}
 
 type Theme = "light" | "dim" | "dark";
 
@@ -187,20 +202,19 @@ type PageOptions = {
 export async function accountPage({ req, title, body, viewer, status = 200, back, cache = "no-store", referrer = "no-referrer", css = "", head = "" }: PageOptions): Promise<Response> {
 	const { accountVars, accentVars } = await import("./themes/css");
 	const { nightModeCookies } = await import("./themes/api");
-	const { paletteOf, readPrefs } = await import("./themes/validate");
+	const { paletteOf } = await import("./themes/validate");
 	const name = settings().instance_name;
 	const night = parseCookies(req).night_mode;
-	let look: ReturnType<typeof readPrefs>["look"] = null;
+	let look: Look | null = null;
 	let extra = "";
 	// changes when the theme or the avatar decoration does: the client around a
 	// framed page reloads to show it
 	let lookKey = "";
 	if (viewer) {
-		const [row] = await sql`select preferences, decoration from users where id = ${viewer.id}::bigint`;
-		lookKey = Bun.hash(JSON.stringify([row?.preferences ?? null, row?.decoration ?? null])).toString(36);
-		const prefs = readPrefs(row?.preferences);
-		look = prefs.look;
-		extra = look?.kind === "painted" ? `:root[data-theme]{${accountVars(look.theme)}}` : `:root{${accentVars(prefs.accent)}}`;
+		const got = await viewerLook(viewer);
+		look = got.look;
+		lookKey = got.lookKey;
+		extra = got.look?.kind === "painted" ? `:root[data-theme]{${accountVars(got.look.theme)}}` : `:root{${accentVars(got.prefs.accent)}}`;
 	}
 	const theme = paletteOf(look, night);
 	const path = new URL(req.url).pathname;

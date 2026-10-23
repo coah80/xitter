@@ -18,7 +18,8 @@ import { memberInvitesRoute } from "./member-invites";
 import { orgRoute } from "./org-manage";
 import { loadMenuFacts } from "./tidy";
 import { clientPayload, type MenuFacts } from "./xitter-menu";
-import { xitterHome } from "./account-page";
+import { viewerLook, xitterHome } from "./account-page";
+import { FRAME_LOOK_REPORT } from "./settings-shell";
 import { isPlayerPage, playerPage } from "./player-card";
 import { chatMediaRoute, chatSocket, juiceboxProxy, socketUser } from "./chat";
 import { loadBuild } from "./build";
@@ -60,10 +61,10 @@ import { emailRoute } from "./email-address";
 import { embedImage, linkPreview, oembed } from "./embeds";
 import { noteAppealsRoute } from "./note-appeals";
 import { decorCatalog, decorFor, decorRoute, decorShop, steamFile } from "./decor";
-import { loadLook, nightModeCookies, themeApi, themeExport, themeImport } from "./themes/api";
-import { resolveBackground } from "./themes/css";
+import { nightModeCookies, themeApi, themeExport, themeImport } from "./themes/api";
+import { accountVars, resolveBackground } from "./themes/css";
 import { themeRoute } from "./themes/page";
-import { paletteOf, readPrefs } from "./themes/validate";
+import { paletteOf, readPrefs, type Look } from "./themes/validate";
 import { serveFont } from "./fonts";
 import { migrationApi } from "./migration";
 import { failInterrupted } from "./migration-import";
@@ -131,11 +132,22 @@ const etags = new WeakMap<Buffer, string>();
 const ADMIN_ENTITIES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;", "\\": "&#92;" };
 // framed beside the client, the panel takes the viewer's theme the way the
 // Xitter settings pages do (light, dim or dark)
+const adminTokens = (look: Look | null, theme: string): string => {
+	if (look?.kind !== "painted") return "";
+	const css = `${accountVars(look.theme)};--panel:var(--surface);--line:var(--border);--dim:var(--muted);--blue:var(--accent);--bar-thin:var(--bar);--on:var(--hover)`;
+	return `<style>:root[data-theme="${theme}"]{${css}}</style>`;
+};
+
 const adminPage = async (req: Request, viewer: Viewer) => {
 	const name = settings().instance_name.replace(/[&<>"'\\]/g, (c) => ADMIN_ENTITIES[c]);
-	const theme = paletteOf(await loadLook(viewer.id), parseCookies(req).night_mode) ?? "dark";
+	const got = await viewerLook(viewer);
+	const theme = paletteOf(got.look, parseCookies(req).night_mode) ?? "dark";
 	const page = (await Bun.file(new URL("./admin.html", import.meta.url)).text()).replaceAll("{{instance}}", () => name);
-	return page.replace('<html lang="en">', `<html lang="en" data-theme="${theme}">`).replace("/public/icon-dark.png", theme === "light" ? "/public/icon-light.png" : "/public/icon-dark.png");
+	return page
+		.replace('<html lang="en">', `<html lang="en" data-theme="${theme}">`)
+		.replace("/public/icon-dark.png", theme === "light" ? "/public/icon-light.png" : "/public/icon-dark.png")
+		.replace("</head>", `${adminTokens(got.look, theme)}<meta name="xitter-look" content="${got.lookKey}">\n</head>`)
+		.replace("</body>", `${FRAME_LOOK_REPORT}\n</body>`);
 };
 
 function staffBlockedPage(reason: string) {

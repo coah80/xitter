@@ -81,7 +81,10 @@ send({type:"go",path:u.pathname+u.search+u.hash});
 document.addEventListener("submit",function(e){var f=e.target;try{if(new URL(f.action,location.href).origin!==location.origin)f.target="_top"}catch(err){}},true);
 var look=document.querySelector('meta[name="xitter-look"]');
 send({type:"page",path:location.pathname+location.search,title:document.title,look:look?look.content:""});
+if(look)send({type:"look",look:look.content});
 })();</script>`;
+
+export const FRAME_LOOK_REPORT = `<script>try{if(window.parent!==window&&parent.location.origin===location.origin){var m=document.querySelector('meta[name="xitter-look"]');if(m)parent.postMessage({xitter:1,type:"look",look:m.content},location.origin)}}catch(e){}</script>`;
 
 export const SHELL_CSS = `
 .xembed{min-height:100vh}

@@ -55,10 +55,12 @@ const ALWAYS = [
 ];
 
 // the frame over the column the client leaves empty (TIDY_SCRIPT's sync)
-export const FRAME_CSS = `#xitter-frame{position:fixed;display:none;border:0;margin:0;padding:0;z-index:0;background:transparent;color-scheme:normal}
+export const FRAME_CSS = `#xitter-frame{position:fixed;display:none;visibility:hidden;border:0;margin:0;padding:0;z-index:0;background:transparent;color-scheme:normal}
 html[data-xitter-host] #xitter-frame{display:block}
+html[data-xitter-host] #xitter-frame[data-ready]{visibility:visible}
+html[data-xitter-host="pending"] #xitter-frame[data-ready]{visibility:hidden}
 html[data-xitter-host="settings"] [aria-label="Section details"]>*{display:none}
-html[data-xitter-host="settings-phone"] main[role="main"]>*,html[data-xitter-host="admin"] main[role="main"]>*{visibility:hidden}
+html[data-xitter-host="pending"] main[role="main"]>*,html[data-xitter-host="settings-phone"] main[role="main"]>*,html[data-xitter-host="admin"] main[role="main"]>*{visibility:hidden}
 html[data-xitter-host="settings-phone"] [data-testid="TopNavBar"]{display:none}
 html[data-xitter-host],html[data-xitter-host] body{overflow:hidden}`;
 
@@ -387,6 +389,7 @@ export const TIDY_SCRIPT = `(function(){
 	// the client's router follows popstate, so a pushed address plus one renders it
 	function spa(path){
 		if(path===location.pathname+location.search+location.hash)return;
+		if(framedFor(path.split("?")[0])||path.split("#")[0]==="/admin")document.documentElement.setAttribute("data-xitter-host","pending");
 		nativePush.call(history,{},"",path);
 		dispatchEvent(new PopStateEvent("popstate",{state:{}}));
 		sync();
@@ -400,7 +403,21 @@ export const TIDY_SCRIPT = `(function(){
 		if(u.pathname.indexOf("/account/")===0||u.pathname.indexOf("/admin")===0||u.pathname.indexOf("/federation/")===0||u.pathname.indexOf("/oauth/")===0||u.pathname.indexOf("/media/")===0){location.assign(u.href);return}
 		spa(u.pathname+u.search+u.hash);
 	}
-	var frame=null,frameAt="",look=null,lastOut="",watched=null,frameTitle="";
+	var frame=null,frameAt="",look=null,lastOut="",watched=null,frameTitle="",frameLoaded=false;
+	var boot=window.__XITTER__||{},checkingLook=false,checkLookAgain=false,reloadingLook=false,appearanceAt="";
+	function reloadLook(){if(!reloadingLook){reloadingLook=true;location.reload()}}
+	function checkLook(){
+		if(!boot.csrf||!boot.savedLook||reloadingLook)return;
+		if(checkingLook){checkLookAgain=true;return}
+		checkingLook=true;
+		fetch("/i/api/xitter/theme",{credentials:"same-origin",cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(saved){
+			if(saved&&JSON.stringify(saved)!==JSON.stringify(boot.savedLook))reloadLook();
+		}).catch(function(){}).finally(function(){checkingLook=false;if(checkLookAgain){checkLookAgain=false;checkLook()}});
+	}
+	addEventListener("focus",checkLook);
+	addEventListener("pageshow",checkLook);
+	document.addEventListener("visibilitychange",function(){if(!document.hidden)checkLook()});
+	if(framedFor(location.pathname)||(location.pathname==="/admin"&&T.staff&&T.staff.nav))document.documentElement.setAttribute("data-xitter-host","pending");
 	// the client lays a column out again after a resize (the rail narrowing,
 	// the settings list dropping to one column) without adding nodes, so the
 	// frame follows the column and the rail by size, not only by mutations
@@ -426,6 +443,8 @@ export const TIDY_SCRIPT = `(function(){
 	}
 	function sync(){
 		var p=location.pathname,kind=null,want=null,f=framedFor(p);
+		var appearancePath=p+location.search+location.hash;
+		if(appearanceAt!==appearancePath){appearanceAt=appearancePath;checkLook()}
 		if(f){kind="settings";want=f+location.search}
 		else if(p==="/admin"&&T.staff&&T.staff.nav){kind="admin";want="/admin"+location.hash}
 		var html=document.documentElement;
@@ -438,6 +457,7 @@ export const TIDY_SCRIPT = `(function(){
 		}
 		var host=kind==="settings"?document.querySelector('[aria-label="Section details"]'):null;
 		var phone=!host;
+		if(kind==="settings"&&!host&&!document.querySelector('[data-testid="error-detail"]'))return;
 		host=host||document.querySelector('main[role="main"]');
 		if(!host)return;
 		if(ro&&watched!==host){
@@ -455,17 +475,18 @@ export const TIDY_SCRIPT = `(function(){
 			frame.id="xitter-frame";
 			frame.title=kind==="admin"?"Admin":"Xitter";
 			frame.src=want;frameAt=want;
-			frame.addEventListener("load",function(){sync()});
+			frame.addEventListener("load",function(){frameLoaded=true;sync()});
 		}else if(frameAt!==want){
 			var was=frameAt;frameAt=want;
 			if(kind==="admin"&&was.indexOf("/admin")===0){try{frame.contentWindow.location.hash=location.hash}catch(e){frame.src=want}}
-			else{try{frame.contentWindow.location.replace(want)}catch(e){frame.src=want}}
+			else{frameLoaded=false;frame.removeAttribute("data-ready");try{frame.contentWindow.location.replace(want)}catch(e){frame.src=want}}
 		}
 		// first inside X's #layers, so its menus, dialogs and chat drawer (added
 		// after it) paint on top. Not beside #layers: the client renders that
 		// container again while it boots and drops nodes it does not own
 		if(frame.parentElement!==layers)layers.insertBefore(frame,layers.firstChild);
 		place(host,kind,phone);
+		if(frameLoaded&&!frame.hasAttribute("data-ready"))frame.setAttribute("data-ready","");
 		// the client titles a route it does not know "Page not found"
 		if(frameTitle&&document.title!==frameTitle)document.title=frameTitle;
 		// the client's empty-page screen is taller than the window; framed, the
@@ -481,6 +502,7 @@ export const TIDY_SCRIPT = `(function(){
 		if(d.type==="go")go(d.path);
 		else if(d.type==="back")go(sessionStorage.getItem("xitter-admin-from")||"/settings/xitter");
 		else if(d.type==="title"&&d.title){frameTitle=d.title;document.title=d.title}
+		else if(d.type==="look")checkLook();
 		else if(d.type==="hash"){
 			if(location.pathname==="/admin"&&location.hash!==d.hash){frameAt="/admin"+d.hash;nativeReplace.call(history,history.state,"","/admin"+d.hash)}
 		}else if(d.type==="page"){
@@ -490,7 +512,8 @@ export const TIDY_SCRIPT = `(function(){
 			if(r&&r+u.search!==location.pathname+location.search)nativeReplace.call(history,history.state,"",r+u.search);
 			if(d.title){frameTitle=d.title;document.title=d.title}
 			// a saved theme or decoration: the client shows it after a reload
-			if(look===null)look=d.look;else if(d.look&&d.look!==look)location.reload();
+			if(look===null)look=d.look;else if(d.look&&d.look!==look)reloadLook();
+			checkLook();
 		}
 	});
 	function twoFactorRow(){
