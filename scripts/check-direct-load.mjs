@@ -24,6 +24,7 @@ const password = process.env.XITTER_PASSWORD || "testpass123";
 const paths = [
 	"/account/xitter",
 	"/account/theme",
+	"/account/email",
 	"/account/decor",
 	"/account/decoration",
 	"/account/organisation",

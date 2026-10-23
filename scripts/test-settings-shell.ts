@@ -48,7 +48,8 @@ test("a tab address and its framed address trade places", () => {
 	expect(framedPathFor("/settings/xitter")).toBe("/account/xitter");
 	expect(framedPathFor("/settings/xitter/theme")).toBe("/account/theme");
 	expect(framedPathFor("/settings/xitter/superadmin")).toBe("/federation/superadmin");
-	for (const path of ["/settings/xitter/email", "/settings/account", "/home", "/settings/xitterx"]) expect(framedPathFor(path)).toBe(null);
+	expect(framedPathFor("/settings/xitter/email")).toBe("/account/email");
+	for (const path of ["/settings/xitter/unknown", "/settings/account", "/home", "/settings/xitterx"]) expect(framedPathFor(path)).toBe(null);
 	// every framed root survives the round trip
 	for (const root of FRAMED_ROOTS) {
 		const route = clientRouteFor(root);

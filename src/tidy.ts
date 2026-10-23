@@ -5,6 +5,7 @@
 
 import { FEDERATION_ON, INSTANCE_ID } from "./federation";
 import { sql } from "./db";
+import { isOrganizationSql } from "./users";
 import { type Feature, feature, settings } from "./settings";
 import type { Viewer } from "./auth";
 import { staffGate } from "./staff-access";
@@ -81,7 +82,7 @@ ${[...ALWAYS, ...off].join(",")}{display:none!important}
 // The More menu and Settings get a subset of these. `where` says which.
 export async function loadMenuFacts(req: Request, viewer: Viewer): Promise<MenuFacts> {
 	const s = settings();
-	const [u] = await sql`select coalesce(u.verified_type in ('business', 'government'), false) or exists (select 1 from affiliations where org_id = u.id)
+	const [u] = await sql`select ${isOrganizationSql(sql`u`)}
 			or exists (select 1 from affiliations where user_id = u.id) or exists (select 1 from affiliation_requests where user_id = u.id) as org,
 		exists (select 1 from staff_messages where user_id = u.id and revoked_at is null) or exists (select 1 from moderation_appeals where user_id = u.id) as notices,
 		coalesce(u.verified_type in ('business', 'government', 'government_individual'), false) as gold
@@ -142,28 +143,45 @@ export function tidyData(links: MenuLink[] = [], staff?: ClientPayload["staff"])
 
 // The client caches the lists it already fetched and doesn't know our mutations
 // change them (a new community, list or bookmark stays missing until a reload).
-// After one of those mutations succeeds, the next navigation loads the page
-// fresh instead of from the cache.
+// After one of those mutations succeeds, going to the page it changed loads
+// fresh instead of from the cache; every other page still opens in place.
 export const FRESH_SCRIPT = `(function(){
-	var stale=false;
-	var own=/(List|Communit|PinTimeline|Scheduled|Draft|Bookmark|Poll)/;
+	var PAGES=[
+		[/List/,/\\/lists(\\/|$)|^\\/i\\/lists/],
+		[/Communit/,/communities/],
+		[/PinTimeline/,/^\\/home/],
+		[/Scheduled|DraftTweet/,/^\\/compose\\/post\\/unsent/],
+		[/ArticleEntityDraft/,/^\\/compose\\/articles/],
+		[/Bookmark/,/^\\/i\\/(bookmarks|history)/]
+	];
+	// queries go out as POST too: only names that change something count
+	var CHANGE=/Create|Delete|Edit|Update|Join|Leave|Mute|Pin|Remove|Add|Subscribe/;
+	var stale=[];
 	function seen(url,method){
 		var m=/\\/graphql\\/[^/]+\\/(\\w+)/.exec(String(url));
-		return !!m&&String(method||"GET").toUpperCase()==="POST"&&own.test(m[1])&&!/^(Fetch|Get)/.test(m[1]);
+		if(!m||String(method||"GET").toUpperCase()!=="POST"||!CHANGE.test(m[1]))return null;
+		var hit=PAGES.filter(function(p){return p[0].test(m[1])});
+		return hit.length?hit:null;
+	}
+	function mark(hit){hit.forEach(function(p){if(stale.indexOf(p[1])<0)stale.push(p[1])})}
+	function due(u){
+		var path=new URL(String(u),location.href).pathname;
+		return stale.some(function(re){return re.test(path)});
 	}
 	var f=window.fetch;
 	window.fetch=function(input,init){
 		var p=f.apply(this,arguments);
 		try{
 			var hit=seen(typeof input==="string"?input:input.url,(init&&init.method)||(input&&input.method));
-			if(hit)p.then(function(r){if(r.ok)stale=true},function(){});
+			if(hit)p.then(function(r){if(r.ok)mark(hit)},function(){});
 		}catch(e){}
 		return p;
 	};
 	var open=XMLHttpRequest.prototype.open;
 	XMLHttpRequest.prototype.open=function(method,url){
 		try{
-			if(seen(url,method))this.addEventListener("load",function(){if(this.status<400)stale=true});
+			var hit=seen(url,method);
+			if(hit)this.addEventListener("load",function(){if(this.status<400)mark(hit)});
 		}catch(e){}
 		return open.apply(this,arguments);
 	};
@@ -174,15 +192,15 @@ export const FRESH_SCRIPT = `(function(){
 			try{if(new URL(String(u),location.origin).pathname.indexOf("/admin")===0)sessionStorage.setItem("xitter-admin-from",location.pathname+location.search)}catch(e){}
 			location.assign(String(u));return;
 		}
-		if(stale&&u&&!/\\/(compose|i\\/flow|i\\/bookmarks\\/add)/.test(String(u))){
-			stale=false;
+		if(u&&stale.length&&due(u)&&!/\\/(compose\\/post$|i\\/flow|i\\/bookmarks\\/add)/.test(String(u))){
+			stale=[];
 			location.assign(u);
 			return;
 		}
 		return push.apply(this,arguments);
 	};
 	window.addEventListener("popstate",function(){
-		if(stale){stale=false;location.reload()}
+		if(stale.length&&due(location.href)){stale=[];location.reload()}
 	});
 	function ownedPath(u){
 		var path="";
@@ -217,7 +235,7 @@ export const FORGOT_SCRIPT = `(function(){
 			var t=el.textContent||"";
 			if(t.indexOf("Authentication app")===0&&t.length<260){
 				e.preventDefault();e.stopPropagation();
-				location.assign("/account/2fa");
+				if(window.__xitterGo)window.__xitterGo("/account/2fa");else location.assign("/account/2fa");
 				return;
 			}
 			el=el.parentElement;
@@ -232,9 +250,9 @@ export const TIDY_SCRIPT = `(function(){
 		var p=location.pathname;
 		if(p.indexOf("/i/flow/signup")===0)location.replace("/");
 		// Settings > Email's "Update email address": our page, not X's flow
-		if(p.indexOf("/i/flow/add_email")===0)location.replace("/account/email");
+		if(p.indexOf("/i/flow/add_email")===0)go("/account/email");
 		// Settings > Automation's "Set up account automation" (automation.ts)
-		if(p.indexOf("/i/flow/enable_automated_account")===0)location.replace("/account/automation");
+		if(p.indexOf("/i/flow/enable_automated_account")===0)go("/account/automation");
 		// Settings > Security's passkey screens and X's add-a-passkey flow talk to its servers (passkeys.ts)
 		if(/passkey/i.test(p)&&p.indexOf("/settings/xitter/")!==0&&(p.indexOf("/settings/")===0||p.indexOf("/i/flow/")===0))location.replace("/account/passkeys");
 	}
@@ -243,7 +261,7 @@ export const TIDY_SCRIPT = `(function(){
 	function footer(){
 		var nav=document.querySelector('nav[aria-label="Footer"]');
 		if(!nav||nav.querySelector("[data-xitter-source]"))return;
-		var c=[].find.call(nav.querySelectorAll("span"),function(s){return /^\u00a9 \d{4} .* Corp\.$/.test(s.textContent)});
+		var c=[].find.call(nav.querySelectorAll("span"),function(s){return /^\u00a9 \\d{4} .* Corp\\.$/.test(s.textContent)});
 		if(!c)return;
 		c.textContent=T.instance+" · ";
 		var a=document.createElement("a");
@@ -252,10 +270,17 @@ export const TIDY_SCRIPT = `(function(){
 		c.appendChild(a);
 	}
 	// the More menu's "Settings and privacy" copied for each of our pages; the
-	// copy has none of the client's handlers, so it is a plain link
+	// copy has none of the client's handlers, so it moves the client itself
 	function leave(a,href){
-		a.setAttribute("href",href);a.setAttribute("data-xitter-link","");
-		a.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();location.assign(href)},true);
+		var to=routeFor(new URL(href,location.origin).pathname)||href;
+		a.setAttribute("href",to);a.setAttribute("data-xitter-link","");
+		a.addEventListener("click",function(e){
+			e.preventDefault();e.stopPropagation();
+			// the menu shuts when its full-screen backdrop is clicked, not on a page change
+			var menu=a.closest('[role="menu"]');
+			if(menu)[].forEach.call(menu.parentNode.children,function(c){if(c!==menu&&getComputedStyle(c).position==="fixed")c.click()});
+			go(to);
+		},true);
 	}
 	function copy(a,l){
 		leave(a,l.href);a.removeAttribute("data-testid");
@@ -403,6 +428,7 @@ export const TIDY_SCRIPT = `(function(){
 		if(u.pathname.indexOf("/account/")===0||u.pathname.indexOf("/admin")===0||u.pathname.indexOf("/federation/")===0||u.pathname.indexOf("/oauth/")===0||u.pathname.indexOf("/media/")===0){location.assign(u.href);return}
 		spa(u.pathname+u.search+u.hash);
 	}
+	window.__xitterGo=go;
 	var frame=null,frameAt="",look=null,lastOut="",watched=null,frameTitle="",frameLoaded=false;
 	var boot=window.__XITTER__||{},checkingLook=false,checkLookAgain=false,reloadingLook=false,appearanceAt="";
 	function reloadLook(){if(!reloadingLook){reloadingLook=true;location.reload()}}
@@ -523,11 +549,11 @@ export const TIDY_SCRIPT = `(function(){
 		var about=a.nextElementSibling&&a.nextElementSibling.querySelector("span");
 		if(about&&about.textContent.indexOf("You can choose a text message")>=0)about.textContent="Help protect your account from unauthorized access by asking for a code from an authentication app when you log in, as well as your password.";
 	}
-	// the client opens links outside x.com in a new tab; our own pages outside
-	// the app (messages from staff) open in this one
+	// the client opens links outside x.com in a new tab; our own pages (messages
+	// from staff) open in this one
 	var open=window.open;
 	window.open=function(u){
-		try{var a=new URL(u,location.href);if(a.origin===location.origin&&a.pathname.indexOf("/account/")===0){location.assign(a.href);return null}}catch(e){}
+		try{var a=new URL(u,location.href);if(a.origin===location.origin&&a.pathname.indexOf("/account/")===0){go(a.href);return null}}catch(e){}
 		return open.apply(window,arguments);
 	};
 	// the code boxes cut a paste to their length before dropping what isn't a
@@ -580,6 +606,7 @@ export const TIDY_SCRIPT = `(function(){
 			else if(text&&text.indexOf("To identify notes that are helpful to a wide range of people, note statuses require agreement")===0)n.textContent="Notes appear on posts after at least three ratings, when two thirds rate them Helpful. Authors cannot rate their own notes.";
 		});
 		ownScreens();
+		pane();
 		footer();
 		menuLinks();
 		xitterRow();

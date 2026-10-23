@@ -424,11 +424,11 @@ async function route(req: Request): Promise<Response | undefined> {
 	// people sign in and up on the signed-out home page; an invite link's code
 	// is kept for the dialog, which then skips asking for it
 	// X's own add-email flow: ours is a page
-	if (p === "/i/flow/add_email") return Response.redirect("/account/email", 302);
+	if (p === "/i/flow/add_email") return Response.redirect("/settings/xitter/email", 302);
 	// and X's automated-account flow (automation.ts)
-	if (p === "/i/flow/enable_automated_account") return Response.redirect("/account/automation", 302);
+	if (p === "/i/flow/enable_automated_account") return Response.redirect("/settings/xitter/automation", 302);
 	// and X's passkey settings and flows: ours is a page (passkeys.ts)
-	if (/^\/(settings|i\/flow)\/.*passkey/i.test(p) && !p.startsWith("/settings/xitter/")) return Response.redirect("/account/passkeys", 302);
+	if (/^\/(settings|i\/flow)\/.*passkey/i.test(p) && !p.startsWith("/settings/xitter/")) return Response.redirect("/settings/xitter/passkeys", 302);
 	// the built-in "All" list (lists.ts)
 	if (p === "/all") return Response.redirect("/i/lists/1", 302);
 	if (p === "/login" || p === "/signup" || p.startsWith("/i/flow/")) {

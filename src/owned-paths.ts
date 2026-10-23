@@ -35,7 +35,7 @@ export function xitterNotFoundPage(): Response {
 // (served at its /account address) into the detail column. A browser tab that
 // opens an /account address is sent to its place under /settings/xitter.
 export const XITTER_SECTION = "/settings/xitter";
-export const FRAMED_ROOTS = ["/federation/superadmin", "/account/xitter", "/account/apps", "/account/2fa", "/account/passkeys", "/account/notices", "/account/invites", "/account/api", "/account/notes", "/account/automation", "/account/instances", "/account/import", "/account/decoration", "/account/organisation", "/account/decor", "/account/theme", "/account/migrate"];
+export const FRAMED_ROOTS = ["/federation/superadmin", "/account/xitter", "/account/apps", "/account/email", "/account/2fa", "/account/passkeys", "/account/notices", "/account/invites", "/account/api", "/account/notes", "/account/automation", "/account/instances", "/account/import", "/account/decoration", "/account/organisation", "/account/decor", "/account/theme", "/account/migrate"];
 
 export function settingsChrome(pathname: string): boolean {
 	return FRAMED_ROOTS.some((root) => pathname === root || pathname.startsWith(`${root}/`));
