@@ -28,6 +28,25 @@ test("the admin panel is a searchable grouped list with a detail column", () => 
 	expect(html).toContain("overflow-wrap: anywhere");
 });
 
+test("the admin layout is flush against the client rail and grows the detail column", () => {
+	const html = readFileSync(new URL("../src/admin.html", import.meta.url), "utf8");
+	expect(html).toContain(".app { display: flex; align-items: flex-start; min-height: 100vh; }");
+	expect(html).not.toContain(".app { display: flex; justify-content: center;");
+	expect(html).toContain("main { flex: 1 1 auto; min-width: 0;");
+	expect(html).toContain("@media (max-width: 700px)");
+	expect(html).toContain(".app { display: block; }");
+	expect(html).toContain("nav, main { width: 100%; border-right: 0; }");
+	expect(html).toContain("nav { width: 280px; }");
+});
+
+test("card grids keep even padding and a gap before the next section", () => {
+	const html = readFileSync(new URL("../src/admin.html", import.meta.url), "utf8");
+	expect(html).toContain(".cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(160px, 100%), 1fr)); gap: 10px; margin-bottom: 16px; }");
+	expect(html).toContain(".card { background: var(--panel); border-radius: 12px; padding: 16px; }");
+	expect(html).toContain(".box { background: var(--panel); border-radius: 12px; padding: 16px; }");
+	expect(html).toContain(".grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 16px; }");
+});
+
 test("the admin panel has a way back out", () => {
 	const html = readFileSync(new URL("../src/admin.html", import.meta.url), "utf8");
 	// no hand-made rail any more: in a tab the client draws its own nav and
