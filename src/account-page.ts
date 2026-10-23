@@ -26,6 +26,9 @@ const TOKENS: Record<Theme, Record<string, string>> = {
 		logo: "url(/public/logo-light.png)",
 		icon: "url(/public/icon-light.png)",
 		scheme: "light",
+		primary: "#0f1419",
+		"primary-text": "#ffffff",
+		"primary-hover": "#272c30",
 	},
 	dim: {
 		bg: "rgb(21 32 43)",
@@ -40,6 +43,9 @@ const TOKENS: Record<Theme, Record<string, string>> = {
 		logo: "url(/public/logo-dark.png)",
 		icon: "url(/public/icon-dark.png)",
 		scheme: "dark",
+		primary: "#1d9bf0",
+		"primary-text": "#ffffff",
+		"primary-hover": "#1a8cd8",
 	},
 	dark: {
 		bg: "#000",
@@ -54,6 +60,9 @@ const TOKENS: Record<Theme, Record<string, string>> = {
 		logo: "url(/public/logo-dark.png)",
 		icon: "url(/public/icon-dark.png)",
 		scheme: "dark",
+		primary: "#eff3f4",
+		"primary-text": "#0f1419",
+		"primary-hover": "#d7dbdc",
 	},
 };
 
@@ -131,11 +140,13 @@ button.small{min-height:32px;padding:0 14px;font-size:14px}
 button:disabled{opacity:.5;cursor:default}
 .save,.savebar{position:sticky;bottom:16px;z-index:4;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;width:max-content;max-width:calc(100% - var(--xt-dock,0px));margin-left:auto;margin-right:var(--xt-dock,0px);padding:0;background:transparent;border:0}
 .save button,.savebar button{box-shadow:0 2px 12px rgb(0 0 0 / .28)}
+.save button:not(.secondary):not(.danger),.savebar button:not(.secondary):not(.danger){background:var(--primary,var(--accent-fill,var(--accent)));color:var(--primary-text,var(--accent-text,#fff))}
 @media (hover:hover){
 .back:hover,.tabs a:hover{background:var(--hover)}
 button:hover:not(:disabled){background:var(--accent-hover)}
 button.secondary:hover:not(:disabled){background:var(--hover)}
 button.danger:hover:not(:disabled){background:rgb(220 30 41)}
+.save button:not(.secondary):not(.danger):hover,.savebar button:not(.secondary):not(.danger):hover{background:var(--primary-hover,var(--accent-hover))}
 a:hover{text-decoration:underline}
 .back:hover,.tabs a:hover{text-decoration:none}
 }

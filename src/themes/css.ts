@@ -139,6 +139,9 @@ export function accountVars(theme: Theme): string {
 		"accent-fill": d.accentFill,
 		"accent-hover": tkn.accentHover,
 		"accent-text": accentTextOn(tkn.accent),
+		primary: theme.id === "custom" ? d.button : d.accentFill,
+		"primary-text": theme.id === "custom" ? d.buttonText : accentTextOn(tkn.accent),
+		"primary-hover": theme.id === "custom" ? d.buttonHover : tkn.accentHover,
 	};
 	if (tkn.font) rows.font = tkn.font;
 	return Object.entries(rows)

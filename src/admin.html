@@ -47,7 +47,9 @@
 	textarea { width: 100%; min-height: 70px; resize: vertical; }
 	.btn { padding: 8px 16px; border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--text); font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
 	.btn:hover { background: var(--panel); }
-	.btn.primary { background: var(--text); color: var(--on-text); border-color: var(--text); }
+	.btn.primary { background: var(--primary, var(--text)); color: var(--primary-text, var(--on-text)); border-color: transparent; }
+	:root[data-theme="dim"] { --primary: var(--blue); --primary-text: #fff; --primary-hover: #1a8cd8; }
+	.btn.primary:hover:not(:disabled) { background: var(--primary-hover, var(--text)); }
 	.btn.danger { color: var(--red); border-color: rgba(244,33,46,.5); }
 	.btn:disabled { opacity: .5; cursor: default; }
 	.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(160px, 100%), 1fr)); gap: 10px; margin-bottom: 16px; }
